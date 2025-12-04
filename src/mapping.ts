@@ -218,6 +218,7 @@ function updateDailyStats(timestamp: BigInt, volume: BigInt, fees: BigInt): void
     dailyStats.numResolvedMarkets = 0
   }
   
+  dailyStats.numTrades = dailyStats.numTrades.plus(ONE_BI)
   dailyStats.volume = dailyStats.volume.plus(volume)
   dailyStats.scaledVolume = dailyStats.volume.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
   dailyStats.fees = dailyStats.fees.plus(fees)
@@ -272,7 +273,7 @@ export function handleConditionResolution(event: ConditionResolution): void {
 }
 
 export function handlePositionSplit(event: PositionSplit): void {
-  let split = new Split(event.transaction.hash.toHexString())
+  let split = new Split(event.transaction.hash)
   split.timestamp = event.block.timestamp
   split.blockNumber = event.block.number
   split.stakeholder = event.params.stakeholder.toHexString()
@@ -290,7 +291,7 @@ export function handlePositionSplit(event: PositionSplit): void {
 }
 
 export function handlePositionsMerge(event: PositionsMerge): void {
-  let merge = new Merge(event.transaction.hash.toHexString())
+  let merge = new Merge(event.transaction.hash)
   merge.timestamp = event.block.timestamp
   merge.blockNumber = event.block.number
   merge.stakeholder = event.params.stakeholder.toHexString()
@@ -308,7 +309,7 @@ export function handlePositionsMerge(event: PositionsMerge): void {
 }
 
 export function handlePayoutRedemption(event: PayoutRedemption): void {
-  let redemption = new Redemption(event.transaction.hash.toHexString())
+  let redemption = new Redemption(event.transaction.hash)
   redemption.timestamp = event.block.timestamp
   redemption.blockNumber = event.block.number
   redemption.redeemer = event.params.redeemer.toHexString()
@@ -365,10 +366,9 @@ export function handleTransferBatch(event: TransferBatch): void {
 }
 
 export function handleOrderFilled(event: OrderFilled): void {
-  // Create OrderFilledEvent
-  let orderFilled = new OrderFilledEvent(
-    event.transaction.hash.toHexString() + "-" + event.params.orderHash.toHexString()
-  )
+  // Create OrderFilledEvent - Use Bytes ID by combining tx hash and order hash
+  let orderFilledId = event.transaction.hash.concat(event.params.orderHash)
+  let orderFilled = new OrderFilledEvent(orderFilledId)
   orderFilled.transactionHash = event.transaction.hash
   orderFilled.timestamp = event.block.timestamp
   orderFilled.blockNumber = event.block.number
@@ -413,8 +413,8 @@ export function handleOrderFilled(event: OrderFilled): void {
   }
   
   // Create Transaction entities for maker and taker
-  // Maker transaction
-  let makerTxId = event.transaction.hash.toHexString() + "-maker-" + event.logIndex.toString()
+  // Maker transaction - Use Bytes ID
+  let makerTxId = event.transaction.hash.concatI32(event.logIndex.toI32() * 2) // *2 for maker
   let makerTx = new Transaction(makerTxId)
   makerTx.type = side == "Sell" ? "Sell" : "Buy"
   makerTx.timestamp = event.block.timestamp
@@ -431,8 +431,8 @@ export function handleOrderFilled(event: OrderFilled): void {
   makerTx.gasPrice = event.transaction.gasPrice
   makerTx.save()
   
-  // Taker transaction (opposite side)
-  let takerTxId = event.transaction.hash.toHexString() + "-taker-" + event.logIndex.toString()
+  // Taker transaction (opposite side) - Use Bytes ID
+  let takerTxId = event.transaction.hash.concatI32(event.logIndex.toI32() * 2 + 1) // *2+1 for taker
   let takerTx = new Transaction(takerTxId)
   takerTx.type = side == "Sell" ? "Buy" : "Sell"
   takerTx.timestamp = event.block.timestamp
@@ -559,7 +559,7 @@ export function handleOrderFilled(event: OrderFilled): void {
 }
 
 export function handleOrdersMatched(event: OrdersMatched): void {
-  let ordersMatched = new OrdersMatchedEvent(event.transaction.hash.toHexString())
+  let ordersMatched = new OrdersMatchedEvent(event.transaction.hash)
   ordersMatched.timestamp = event.block.timestamp
   ordersMatched.blockNumber = event.block.number
   ordersMatched.makerAssetID = event.params.makerAssetId
@@ -606,16 +606,5 @@ export function handleFeeCharged(event: FeeCharged): void {
   // Update fee statistics
 }
 
-// =============================================================================
-// CALL HANDLERS
-// =============================================================================
-
-export function handlePrepareCondition(call: ethereum.Call): void {
-  // Handle prepareCondition function calls
-  // This is called when conditions are prepared
-}
-
-export function handleReportPayouts(call: ethereum.Call): void {
-  // Handle reportPayouts function calls
-  // This is called when conditions are resolved
-}
+// Call handlers removed - events are faster and more reliable
+// ConditionPreparation and ConditionResolution events handle all condition lifecycle

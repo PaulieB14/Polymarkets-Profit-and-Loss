@@ -146,7 +146,7 @@ type Market @entity(immutable: false) {
   priceHistory: [PricePoint!] @derivedFrom(field: "market")
 }
 
-type PricePoint @entity(immutable: false) {
+type PricePoint @entity(immutable: true) {
   "Timestamp + Market ID"
   id: ID!
   market: Market!
@@ -206,9 +206,9 @@ enum TradeType {
   Sell
 }
 
-type Transaction @entity(immutable: false) {
+type Transaction @entity(immutable: true) {
   "Transaction hash"
-  id: ID!
+  id: Bytes!
   type: TradeType!
   timestamp: BigInt!
   blockNumber: BigInt!
@@ -265,9 +265,9 @@ type Orderbook @entity(immutable: false) {
   orders: [OrderFilledEvent!] @derivedFrom(field: "orderbook")
 }
 
-type OrderFilledEvent @entity(immutable: false) {
+type OrderFilledEvent @entity(immutable: true) {
   "Transaction hash + Order hash"
-  id: ID!
+  id: Bytes!
   transactionHash: Bytes!
   timestamp: BigInt!
   blockNumber: BigInt!
@@ -289,9 +289,9 @@ type OrderFilledEvent @entity(immutable: false) {
   size: BigInt!
 }
 
-type OrdersMatchedEvent @entity(immutable: false) {
+type OrdersMatchedEvent @entity(immutable: true) {
   "Transaction hash"
-  id: ID!
+  id: Bytes!
   timestamp: BigInt!
   blockNumber: BigInt!
   
@@ -306,9 +306,9 @@ type OrdersMatchedEvent @entity(immutable: false) {
 # POSITION MANAGEMENT
 # =============================================================================
 
-type Split @entity(immutable: false) {
+type Split @entity(immutable: true) {
   "Transaction hash"
-  id: ID!
+  id: Bytes!
   timestamp: BigInt!
   blockNumber: BigInt!
   
@@ -323,9 +323,9 @@ type Split @entity(immutable: false) {
   amount: BigInt!
 }
 
-type Merge @entity(immutable: false) {
+type Merge @entity(immutable: true) {
   "Transaction hash"
-  id: ID!
+  id: Bytes!
   timestamp: BigInt!
   blockNumber: BigInt!
   
@@ -340,9 +340,9 @@ type Merge @entity(immutable: false) {
   amount: BigInt!
 }
 
-type Redemption @entity(immutable: false) {
+type Redemption @entity(immutable: true) {
   "Transaction hash"
-  id: ID!
+  id: Bytes!
   timestamp: BigInt!
   blockNumber: BigInt!
   
