@@ -139,6 +139,7 @@ type Market @entity(immutable: false) {
   
   # Price data
   currentPrice: BigDecimal
+  lastPricePointTime: BigInt
   
   # Relationships using @derivedFrom (no large arrays)
   positions: [MarketPosition!] @derivedFrom(field: "market")
