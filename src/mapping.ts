@@ -76,12 +76,12 @@ function getOrCreateGlobal(): Global {
   return global as Global
 }
 
-function getOrCreateAccount(address: Bytes): Account {
+function getOrCreateAccount(address: Bytes, timestamp: BigInt): Account {
   let account = Account.load(address.toHexString())
   if (account === null) {
     account = new Account(address.toHexString())
-    account.creationTimestamp = ZERO_BI
-    account.lastSeenTimestamp = ZERO_BI
+    account.creationTimestamp = timestamp
+    account.lastSeenTimestamp = timestamp
     account.lastTradedTimestamp = ZERO_BI
     account.isActive = false
     account.numTrades = ZERO_BI
@@ -145,6 +145,7 @@ function getOrCreateMarket(marketId: string, condition: Condition, outcomeIndex:
     market.numBuyers = 0
     market.numSellers = 0
     market.currentPrice = null
+    market.lastPricePointTime = null
     market.save()
   }
   return market as Market
@@ -227,14 +228,24 @@ function updateDailyStats(timestamp: BigInt, volume: BigInt, fees: BigInt): void
 }
 
 function createPricePoint(market: Market, timestamp: BigInt, price: BigDecimal, volume: BigInt): void {
-  let pricePointId = market.id + "-" + timestamp.toString()
-  let pricePoint = new PricePoint(pricePointId)
-  pricePoint.market = market.id
-  pricePoint.timestamp = timestamp
-  pricePoint.price = price
-  pricePoint.volume = volume
-  pricePoint.scaledVolume = volume.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
-  pricePoint.save()
+  // Only create price points every 5 minutes to avoid bloating the database
+  let lastPriceTime = market.lastPricePointTime
+  let timeSinceLastPrice = lastPriceTime ? timestamp.minus(lastPriceTime) : BigInt.fromI32(999999)
+  let fiveMinutes = BigInt.fromI32(300) // 300 seconds = 5 minutes
+  
+  if (timeSinceLastPrice.ge(fiveMinutes)) {
+    let pricePointId = market.id + "-" + timestamp.toString()
+    let pricePoint = new PricePoint(pricePointId)
+    pricePoint.market = market.id
+    pricePoint.timestamp = timestamp
+    pricePoint.price = price
+    pricePoint.volume = volume
+    pricePoint.scaledVolume = volume.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
+    pricePoint.save()
+    
+    // Update the last price point time on the market
+    market.lastPricePointTime = timestamp
+  }
 }
 
 // =============================================================================
@@ -285,7 +296,7 @@ export function handlePositionSplit(event: PositionSplit): void {
   split.save()
   
   // Update account
-  let account = getOrCreateAccount(event.params.stakeholder)
+  let account = getOrCreateAccount(event.params.stakeholder, event.block.timestamp)
   account.lastSeenTimestamp = event.block.timestamp
   account.save()
 }
@@ -303,7 +314,7 @@ export function handlePositionsMerge(event: PositionsMerge): void {
   merge.save()
   
   // Update account
-  let account = getOrCreateAccount(event.params.stakeholder)
+  let account = getOrCreateAccount(event.params.stakeholder, event.block.timestamp)
   account.lastSeenTimestamp = event.block.timestamp
   account.save()
 }
@@ -321,7 +332,7 @@ export function handlePayoutRedemption(event: PayoutRedemption): void {
   redemption.save()
   
   // Update account
-  let account = getOrCreateAccount(event.params.redeemer)
+  let account = getOrCreateAccount(event.params.redeemer, event.block.timestamp)
   account.lastSeenTimestamp = event.block.timestamp
   account.save()
 }
@@ -334,14 +345,14 @@ export function handleTransferSingle(event: TransferSingle): void {
   
   if (from.toHexString() != "0x0000000000000000000000000000000000000000") {
     // Not a mint, update sender account
-    let fromAccount = getOrCreateAccount(from)
+    let fromAccount = getOrCreateAccount(from, event.block.timestamp)
     fromAccount.lastSeenTimestamp = event.block.timestamp
     fromAccount.save()
   }
   
   if (to.toHexString() != "0x0000000000000000000000000000000000000000") {
     // Not a burn, update receiver account
-    let toAccount = getOrCreateAccount(to)
+    let toAccount = getOrCreateAccount(to, event.block.timestamp)
     toAccount.lastSeenTimestamp = event.block.timestamp
     toAccount.save()
   }
@@ -353,13 +364,13 @@ export function handleTransferBatch(event: TransferBatch): void {
   let to = event.params.to
   
   if (from.toHexString() != "0x0000000000000000000000000000000000000000") {
-    let fromAccount = getOrCreateAccount(from)
+    let fromAccount = getOrCreateAccount(from, event.block.timestamp)
     fromAccount.lastSeenTimestamp = event.block.timestamp
     fromAccount.save()
   }
   
   if (to.toHexString() != "0x0000000000000000000000000000000000000000") {
-    let toAccount = getOrCreateAccount(to)
+    let toAccount = getOrCreateAccount(to, event.block.timestamp)
     toAccount.lastSeenTimestamp = event.block.timestamp
     toAccount.save()
   }
@@ -423,7 +434,7 @@ export function handleOrderFilled(event: OrderFilled): void {
   makerTx.outcomeIndex = BigInt.fromI32(0) // Would need to decode from tokenId
   makerTx.price = price
   makerTx.scaledPrice = price
-  makerTx.gasUsed = event.receipt ? event.receipt!.gasUsed : ZERO_BI
+  makerTx.gasUsed = ZERO_BI // Gas data not critical for P&L
   makerTx.gasPrice = event.transaction.gasPrice
   makerTx.save()
   
@@ -441,12 +452,12 @@ export function handleOrderFilled(event: OrderFilled): void {
   takerTx.outcomeIndex = BigInt.fromI32(1)
   takerTx.price = price
   takerTx.scaledPrice = price
-  takerTx.gasUsed = event.receipt ? event.receipt!.gasUsed : ZERO_BI
+  takerTx.gasUsed = ZERO_BI // Gas data not critical for P&L
   takerTx.gasPrice = event.transaction.gasPrice
   takerTx.save()
   
   // Update maker account
-  let makerAccount = getOrCreateAccount(event.params.maker)
+  let makerAccount = getOrCreateAccount(event.params.maker, event.block.timestamp)
   makerAccount.numTrades = makerAccount.numTrades.plus(ONE_BI)
   makerAccount.collateralVolume = makerAccount.collateralVolume.plus(event.params.makerAmountFilled)
   makerAccount.scaledCollateralVolume = makerAccount.collateralVolume.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
@@ -458,7 +469,7 @@ export function handleOrderFilled(event: OrderFilled): void {
   makerAccount.save()
   
   // Update taker account
-  let takerAccount = getOrCreateAccount(event.params.taker)
+  let takerAccount = getOrCreateAccount(event.params.taker, event.block.timestamp)
   takerAccount.numTrades = takerAccount.numTrades.plus(ONE_BI)
   takerAccount.collateralVolume = takerAccount.collateralVolume.plus(event.params.takerAmountFilled)
   takerAccount.scaledCollateralVolume = takerAccount.collateralVolume.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
@@ -599,7 +610,7 @@ export function handleTokenRegistered(event: TokenRegistered): void {
 
 export function handleFeeCharged(event: FeeCharged): void {
   // FeeCharged event: receiver, tokenId, amount
-  let account = getOrCreateAccount(event.params.receiver)
+  let account = getOrCreateAccount(event.params.receiver, event.block.timestamp)
   account.totalFeesPaid = account.totalFeesPaid.plus(event.params.amount)
   account.scaledTotalFeesPaid = account.totalFeesPaid.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
   account.lastSeenTimestamp = event.block.timestamp
