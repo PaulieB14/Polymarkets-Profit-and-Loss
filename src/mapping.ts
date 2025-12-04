@@ -397,17 +397,13 @@ export function handleOrderFilled(event: OrderFilled): void {
   
   // Try to find the market for this asset
   // Asset IDs are token IDs - we need to map them to market IDs
-  // For now, create a simple mapping: check if market exists for this token
   let marketId = event.params.makerAssetId.toString()
   let market = Market.load(marketId)
   
-  // If market doesn't exist, try to derive it from the token ID
-  // In CTF, token IDs encode the condition and outcome index
+  // If market doesn't exist, create a placeholder market with unknown condition
+  // Use a fixed dummy condition ID (32 zero bytes) to avoid any Bytes conversion issues
   if (market === null) {
-    // For Polymarket, we might not have the exact market mapping yet
-    // We'll create a placeholder market using the asset ID as the market ID
-    // This is a workaround - ideally we'd decode the token ID to get condition + outcome
-    let dummyConditionId = Bytes.fromHexString("0x" + event.params.makerAssetId.toHexString().slice(2, 66))
+    let dummyConditionId = Bytes.fromHexString("0x0000000000000000000000000000000000000000000000000000000000000000")
     let condition = getOrCreateCondition(dummyConditionId)
     market = getOrCreateMarket(marketId, condition, BigInt.fromI32(0))
   }
