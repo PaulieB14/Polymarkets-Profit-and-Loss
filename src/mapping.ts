@@ -598,8 +598,22 @@ export function handleTokenRegistered(event: TokenRegistered): void {
 }
 
 export function handleFeeCharged(event: FeeCharged): void {
-  // Handle fee charging
-  // Update fee statistics
+  // FeeCharged event: receiver, tokenId, amount
+  let account = getOrCreateAccount(event.params.receiver)
+  account.totalFeesPaid = account.totalFeesPaid.plus(event.params.amount)
+  account.scaledTotalFeesPaid = account.totalFeesPaid.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
+  account.lastSeenTimestamp = event.block.timestamp
+  account.save()
+  
+  // Update global fees
+  let global = getOrCreateGlobal()
+  global.collateralFees = global.collateralFees.plus(event.params.amount)
+  global.scaledCollateralFees = global.collateralFees.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
+  global.lastUpdated = event.block.timestamp
+  global.save()
+  
+  // Update daily stats
+  updateDailyStats(event.block.timestamp, ZERO_BI, event.params.amount)
 }
 
 // Call handlers removed - events are faster and more reliable
