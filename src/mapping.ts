@@ -365,6 +365,7 @@ export function handleTransferBatch(event: TransferBatch): void {
 }
 
 export function handleOrderFilled(event: OrderFilled): void {
+  // Create OrderFilledEvent
   let orderFilled = new OrderFilledEvent(
     event.transaction.hash.toHexString() + "-" + event.params.orderHash.toHexString()
   )
@@ -380,10 +381,137 @@ export function handleOrderFilled(event: OrderFilled): void {
   orderFilled.takerAmountFilled = event.params.takerAmountFilled
   orderFilled.fee = event.params.fee
   orderFilled.orderbook = event.params.makerAssetId.toString()
-  orderFilled.side = "Unknown" // Determine from context
-  orderFilled.price = ZERO_BD // Calculate from amounts
+  
+  // Calculate price (takerAmount / makerAmount)
+  let price = ZERO_BD
+  if (!event.params.makerAmountFilled.equals(ZERO_BI)) {
+    price = event.params.takerAmountFilled.toBigDecimal().div(event.params.makerAmountFilled.toBigDecimal())
+  }
+  orderFilled.price = price
+  
+  // Determine side: if makerAssetId is lower, maker is selling outcome tokens for collateral
+  let side = event.params.makerAssetId.lt(event.params.takerAssetId) ? "Sell" : "Buy"
+  orderFilled.side = side
   orderFilled.size = event.params.makerAmountFilled
   orderFilled.save()
+  
+  // Try to find the market for this asset
+  // Asset IDs are token IDs - we need to map them to market IDs
+  // For now, create a simple mapping: check if market exists for this token
+  let marketId = event.params.makerAssetId.toString()
+  let market = Market.load(marketId)
+  
+  // If market doesn't exist, try to derive it from the token ID
+  // In CTF, token IDs encode the condition and outcome index
+  if (market === null) {
+    // For Polymarket, we might not have the exact market mapping yet
+    // We'll create a placeholder market using the asset ID as the market ID
+    // This is a workaround - ideally we'd decode the token ID to get condition + outcome
+    let dummyConditionId = Bytes.fromHexString("0x" + event.params.makerAssetId.toHexString().slice(2, 66))
+    let condition = getOrCreateCondition(dummyConditionId)
+    market = getOrCreateMarket(marketId, condition, BigInt.fromI32(0))
+  }
+  
+  // Create Transaction entities for maker and taker
+  // Maker transaction
+  let makerTxId = event.transaction.hash.toHexString() + "-maker-" + event.logIndex.toString()
+  let makerTx = new Transaction(makerTxId)
+  makerTx.type = side == "Sell" ? "Sell" : "Buy"
+  makerTx.timestamp = event.block.timestamp
+  makerTx.blockNumber = event.block.number
+  makerTx.user = event.params.maker.toHexString()
+  makerTx.market = market.id
+  makerTx.tradeAmount = event.params.makerAmountFilled
+  makerTx.feeAmount = event.params.fee
+  makerTx.outcomeTokensAmount = event.params.makerAmountFilled
+  makerTx.outcomeIndex = BigInt.fromI32(0) // Would need to decode from tokenId
+  makerTx.price = price
+  makerTx.scaledPrice = price
+  makerTx.gasUsed = event.receipt ? event.receipt!.gasUsed : ZERO_BI
+  makerTx.gasPrice = event.transaction.gasPrice
+  makerTx.save()
+  
+  // Taker transaction (opposite side)
+  let takerTxId = event.transaction.hash.toHexString() + "-taker-" + event.logIndex.toString()
+  let takerTx = new Transaction(takerTxId)
+  takerTx.type = side == "Sell" ? "Buy" : "Sell"
+  takerTx.timestamp = event.block.timestamp
+  takerTx.blockNumber = event.block.number
+  takerTx.user = event.params.taker.toHexString()
+  takerTx.market = market.id
+  takerTx.tradeAmount = event.params.takerAmountFilled
+  takerTx.feeAmount = ZERO_BI // Fee typically paid by one side
+  takerTx.outcomeTokensAmount = event.params.takerAmountFilled
+  takerTx.outcomeIndex = BigInt.fromI32(1)
+  takerTx.price = price
+  takerTx.scaledPrice = price
+  takerTx.gasUsed = event.receipt ? event.receipt!.gasUsed : ZERO_BI
+  takerTx.gasPrice = event.transaction.gasPrice
+  takerTx.save()
+  
+  // Update maker account
+  let makerAccount = getOrCreateAccount(event.params.maker)
+  makerAccount.numTrades = makerAccount.numTrades.plus(ONE_BI)
+  makerAccount.collateralVolume = makerAccount.collateralVolume.plus(event.params.makerAmountFilled)
+  makerAccount.scaledCollateralVolume = makerAccount.collateralVolume.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
+  makerAccount.totalFeesPaid = makerAccount.totalFeesPaid.plus(event.params.fee)
+  makerAccount.scaledTotalFeesPaid = makerAccount.totalFeesPaid.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
+  makerAccount.lastTradedTimestamp = event.block.timestamp
+  makerAccount.lastSeenTimestamp = event.block.timestamp
+  makerAccount.isActive = true
+  makerAccount.save()
+  
+  // Update taker account
+  let takerAccount = getOrCreateAccount(event.params.taker)
+  takerAccount.numTrades = takerAccount.numTrades.plus(ONE_BI)
+  takerAccount.collateralVolume = takerAccount.collateralVolume.plus(event.params.takerAmountFilled)
+  takerAccount.scaledCollateralVolume = takerAccount.collateralVolume.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
+  takerAccount.lastTradedTimestamp = event.block.timestamp
+  takerAccount.lastSeenTimestamp = event.block.timestamp
+  takerAccount.isActive = true
+  takerAccount.save()
+  
+  // Update market statistics
+  market.totalVolume = market.totalVolume.plus(event.params.makerAmountFilled)
+  market.scaledTotalVolume = market.totalVolume.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
+  market.numTrades = market.numTrades.plus(ONE_BI)
+  market.currentPrice = price
+  market.save()
+  
+  // Create price point for historical tracking
+  createPricePoint(market, event.block.timestamp, price, event.params.makerAmountFilled)
+  
+  // Update market positions
+  let makerPosition = getOrCreateMarketPosition(makerAccount, market)
+  if (side == "Sell") {
+    makerPosition.quantitySold = makerPosition.quantitySold.plus(event.params.makerAmountFilled)
+    makerPosition.valueSold = makerPosition.valueSold.plus(event.params.makerAmountFilled)
+  } else {
+    makerPosition.quantityBought = makerPosition.quantityBought.plus(event.params.makerAmountFilled)
+    makerPosition.valueBought = makerPosition.valueBought.plus(event.params.makerAmountFilled)
+  }
+  makerPosition.netQuantity = makerPosition.quantityBought.minus(makerPosition.quantitySold)
+  makerPosition.feesPaid = makerPosition.feesPaid.plus(event.params.fee)
+  makerPosition.lastTradeTimestamp = event.block.timestamp
+  if (makerPosition.firstTradeTimestamp.equals(ZERO_BI)) {
+    makerPosition.firstTradeTimestamp = event.block.timestamp
+  }
+  makerPosition.save()
+  
+  let takerPosition = getOrCreateMarketPosition(takerAccount, market)
+  if (side == "Sell") {
+    takerPosition.quantityBought = takerPosition.quantityBought.plus(event.params.takerAmountFilled)
+    takerPosition.valueBought = takerPosition.valueBought.plus(event.params.takerAmountFilled)
+  } else {
+    takerPosition.quantitySold = takerPosition.quantitySold.plus(event.params.takerAmountFilled)
+    takerPosition.valueSold = takerPosition.valueSold.plus(event.params.takerAmountFilled)
+  }
+  takerPosition.netQuantity = takerPosition.quantityBought.minus(takerPosition.quantitySold)
+  takerPosition.lastTradeTimestamp = event.block.timestamp
+  if (takerPosition.firstTradeTimestamp.equals(ZERO_BI)) {
+    takerPosition.firstTradeTimestamp = event.block.timestamp
+  }
+  takerPosition.save()
   
   // Update orderbook
   let orderbook = getOrCreateOrderbook(event.params.makerAssetId)
@@ -393,6 +521,16 @@ export function handleOrderFilled(event: OrderFilled): void {
   orderbook.totalFees = orderbook.totalFees.plus(event.params.fee)
   orderbook.scaledTotalFees = orderbook.totalFees.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
   orderbook.lastActiveDay = event.block.timestamp.div(BigInt.fromI32(86400))
+  
+  if (side == "Buy") {
+    orderbook.buysQuantity = orderbook.buysQuantity.plus(ONE_BI)
+    orderbook.collateralBuyVolume = orderbook.collateralBuyVolume.plus(event.params.makerAmountFilled)
+    orderbook.scaledCollateralBuyVolume = orderbook.collateralBuyVolume.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
+  } else {
+    orderbook.sellsQuantity = orderbook.sellsQuantity.plus(ONE_BI)
+    orderbook.collateralSellVolume = orderbook.collateralSellVolume.plus(event.params.makerAmountFilled)
+    orderbook.scaledCollateralSellVolume = orderbook.collateralSellVolume.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
+  }
   orderbook.save()
   
   // Update global stats
@@ -402,6 +540,17 @@ export function handleOrderFilled(event: OrderFilled): void {
   global.scaledCollateralVolume = global.collateralVolume.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
   global.collateralFees = global.collateralFees.plus(event.params.fee)
   global.scaledCollateralFees = global.collateralFees.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
+  
+  if (side == "Buy") {
+    global.buysQuantity = global.buysQuantity.plus(ONE_BI)
+    global.collateralBuyVolume = global.collateralBuyVolume.plus(event.params.makerAmountFilled)
+    global.scaledCollateralBuyVolume = global.collateralBuyVolume.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
+  } else {
+    global.sellsQuantity = global.sellsQuantity.plus(ONE_BI)
+    global.collateralSellVolume = global.collateralSellVolume.plus(event.params.makerAmountFilled)
+    global.scaledCollateralSellVolume = global.collateralSellVolume.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
+  }
+  
   global.lastUpdated = event.block.timestamp
   global.save()
   
@@ -426,8 +575,30 @@ export function handleOrderCancelled(event: OrderCancelled): void {
 }
 
 export function handleTokenRegistered(event: TokenRegistered): void {
-  // Handle token registration
-  // This could be used to track market creation
+  // TokenRegistered is emitted when a new conditional token is registered
+  // event.params.token0 and token1 are the outcome tokens
+  // event.params.conditionId is the condition they belong to
+  
+  let condition = getOrCreateCondition(event.params.conditionId)
+  let global = getOrCreateGlobal()
+  
+  // Create markets for each outcome token
+  // Token0 = outcome 0, Token1 = outcome 1
+  let market0Id = event.params.conditionId.toHexString() + "-0"
+  let market1Id = event.params.conditionId.toHexString() + "-1"
+  
+  let market0 = getOrCreateMarket(market0Id, condition, BigInt.fromI32(0))
+  let market1 = getOrCreateMarket(market1Id, condition, BigInt.fromI32(1))
+  
+  // Update condition stats
+  condition.numMarkets = condition.numMarkets + 2
+  condition.save()
+  
+  // Update global stats
+  global.numMarkets = global.numMarkets + 2
+  global.numActiveMarkets = global.numActiveMarkets + 2
+  global.lastUpdated = event.block.timestamp
+  global.save()
 }
 
 export function handleFeeCharged(event: FeeCharged): void {
