@@ -273,7 +273,7 @@ export function handleConditionResolution(event: ConditionResolution): void {
 }
 
 export function handlePositionSplit(event: PositionSplit): void {
-  let split = new Split(event.transaction.hash)
+  let split = new Split(event.transaction.hash.toHexString())
   split.timestamp = event.block.timestamp
   split.blockNumber = event.block.number
   split.stakeholder = event.params.stakeholder.toHexString()
@@ -291,7 +291,7 @@ export function handlePositionSplit(event: PositionSplit): void {
 }
 
 export function handlePositionsMerge(event: PositionsMerge): void {
-  let merge = new Merge(event.transaction.hash)
+  let merge = new Merge(event.transaction.hash.toHexString())
   merge.timestamp = event.block.timestamp
   merge.blockNumber = event.block.number
   merge.stakeholder = event.params.stakeholder.toHexString()
@@ -309,7 +309,7 @@ export function handlePositionsMerge(event: PositionsMerge): void {
 }
 
 export function handlePayoutRedemption(event: PayoutRedemption): void {
-  let redemption = new Redemption(event.transaction.hash)
+  let redemption = new Redemption(event.transaction.hash.toHexString())
   redemption.timestamp = event.block.timestamp
   redemption.blockNumber = event.block.number
   redemption.redeemer = event.params.redeemer.toHexString()
@@ -366,8 +366,8 @@ export function handleTransferBatch(event: TransferBatch): void {
 }
 
 export function handleOrderFilled(event: OrderFilled): void {
-  // Create OrderFilledEvent - Use Bytes ID by combining tx hash and order hash
-  let orderFilledId = event.transaction.hash.concat(event.params.orderHash)
+  // Create OrderFilledEvent
+  let orderFilledId = event.transaction.hash.toHexString() + "-" + event.params.orderHash.toHexString()
   let orderFilled = new OrderFilledEvent(orderFilledId)
   orderFilled.transactionHash = event.transaction.hash
   orderFilled.timestamp = event.block.timestamp
@@ -413,8 +413,8 @@ export function handleOrderFilled(event: OrderFilled): void {
   }
   
   // Create Transaction entities for maker and taker
-  // Maker transaction - Use Bytes ID
-  let makerTxId = event.transaction.hash.concatI32(event.logIndex.toI32() * 2) // *2 for maker
+  // Maker transaction
+  let makerTxId = event.transaction.hash.toHexString() + "-maker-" + event.logIndex.toString()
   let makerTx = new Transaction(makerTxId)
   makerTx.type = side == "Sell" ? "Sell" : "Buy"
   makerTx.timestamp = event.block.timestamp
@@ -431,8 +431,8 @@ export function handleOrderFilled(event: OrderFilled): void {
   makerTx.gasPrice = event.transaction.gasPrice
   makerTx.save()
   
-  // Taker transaction (opposite side) - Use Bytes ID
-  let takerTxId = event.transaction.hash.concatI32(event.logIndex.toI32() * 2 + 1) // *2+1 for taker
+  // Taker transaction (opposite side)
+  let takerTxId = event.transaction.hash.toHexString() + "-taker-" + event.logIndex.toString()
   let takerTx = new Transaction(takerTxId)
   takerTx.type = side == "Sell" ? "Buy" : "Sell"
   takerTx.timestamp = event.block.timestamp
@@ -559,7 +559,7 @@ export function handleOrderFilled(event: OrderFilled): void {
 }
 
 export function handleOrdersMatched(event: OrdersMatched): void {
-  let ordersMatched = new OrdersMatchedEvent(event.transaction.hash)
+  let ordersMatched = new OrdersMatchedEvent(event.transaction.hash.toHexString())
   ordersMatched.timestamp = event.block.timestamp
   ordersMatched.blockNumber = event.block.number
   ordersMatched.makerAssetID = event.params.makerAssetId

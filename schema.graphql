@@ -208,7 +208,7 @@ enum TradeType {
 
 type Transaction @entity(immutable: true) {
   "Transaction hash"
-  id: Bytes!
+  id: ID!
   type: TradeType!
   timestamp: BigInt!
   blockNumber: BigInt!
@@ -267,7 +267,7 @@ type Orderbook @entity(immutable: false) {
 
 type OrderFilledEvent @entity(immutable: true) {
   "Transaction hash + Order hash"
-  id: Bytes!
+  id: ID!
   transactionHash: Bytes!
   timestamp: BigInt!
   blockNumber: BigInt!
@@ -291,7 +291,7 @@ type OrderFilledEvent @entity(immutable: true) {
 
 type OrdersMatchedEvent @entity(immutable: true) {
   "Transaction hash"
-  id: Bytes!
+  id: ID!
   timestamp: BigInt!
   blockNumber: BigInt!
   
@@ -308,7 +308,7 @@ type OrdersMatchedEvent @entity(immutable: true) {
 
 type Split @entity(immutable: true) {
   "Transaction hash"
-  id: Bytes!
+  id: ID!
   timestamp: BigInt!
   blockNumber: BigInt!
   
@@ -325,7 +325,7 @@ type Split @entity(immutable: true) {
 
 type Merge @entity(immutable: true) {
   "Transaction hash"
-  id: Bytes!
+  id: ID!
   timestamp: BigInt!
   blockNumber: BigInt!
   
@@ -342,7 +342,7 @@ type Merge @entity(immutable: true) {
 
 type Redemption @entity(immutable: true) {
   "Transaction hash"
-  id: Bytes!
+  id: ID!
   timestamp: BigInt!
   blockNumber: BigInt!
   
