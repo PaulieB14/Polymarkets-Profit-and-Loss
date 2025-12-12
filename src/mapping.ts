@@ -145,7 +145,6 @@ function getOrCreateMarket(marketId: string, condition: Condition, outcomeIndex:
     market.numBuyers = 0
     market.numSellers = 0
     market.currentPrice = null
-    market.lastPricePointTime = null
     market.save()
   }
   return market as Market
@@ -228,24 +227,14 @@ function updateDailyStats(timestamp: BigInt, volume: BigInt, fees: BigInt): void
 }
 
 function createPricePoint(market: Market, timestamp: BigInt, price: BigDecimal, volume: BigInt): void {
-  // Only create price points every 5 minutes to avoid bloating the database
-  let lastPriceTime = market.lastPricePointTime
-  let timeSinceLastPrice = lastPriceTime ? timestamp.minus(lastPriceTime) : BigInt.fromI32(999999)
-  let fiveMinutes = BigInt.fromI32(300) // 300 seconds = 5 minutes
-  
-  if (timeSinceLastPrice.ge(fiveMinutes)) {
-    let pricePointId = market.id + "-" + timestamp.toString()
-    let pricePoint = new PricePoint(pricePointId)
-    pricePoint.market = market.id
-    pricePoint.timestamp = timestamp
-    pricePoint.price = price
-    pricePoint.volume = volume
-    pricePoint.scaledVolume = volume.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
-    pricePoint.save()
-    
-    // Update the last price point time on the market
-    market.lastPricePointTime = timestamp
-  }
+  let pricePointId = market.id + "-" + timestamp.toString()
+  let pricePoint = new PricePoint(pricePointId)
+  pricePoint.market = market.id
+  pricePoint.timestamp = timestamp
+  pricePoint.price = price
+  pricePoint.volume = volume
+  pricePoint.scaledVolume = volume.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
+  pricePoint.save()
 }
 
 // =============================================================================
@@ -284,7 +273,8 @@ export function handleConditionResolution(event: ConditionResolution): void {
 }
 
 export function handlePositionSplit(event: PositionSplit): void {
-  let split = new Split(event.transaction.hash.toHexString())
+  let splitId = event.transaction.hash.toHexString() + "-" + event.logIndex.toString()
+  let split = new Split(splitId)
   split.timestamp = event.block.timestamp
   split.blockNumber = event.block.number
   split.stakeholder = event.params.stakeholder.toHexString()
@@ -302,7 +292,8 @@ export function handlePositionSplit(event: PositionSplit): void {
 }
 
 export function handlePositionsMerge(event: PositionsMerge): void {
-  let merge = new Merge(event.transaction.hash.toHexString())
+  let mergeId = event.transaction.hash.toHexString() + "-" + event.logIndex.toString()
+  let merge = new Merge(mergeId)
   merge.timestamp = event.block.timestamp
   merge.blockNumber = event.block.number
   merge.stakeholder = event.params.stakeholder.toHexString()
@@ -320,7 +311,8 @@ export function handlePositionsMerge(event: PositionsMerge): void {
 }
 
 export function handlePayoutRedemption(event: PayoutRedemption): void {
-  let redemption = new Redemption(event.transaction.hash.toHexString())
+  let redemptionId = event.transaction.hash.toHexString() + "-" + event.logIndex.toString()
+  let redemption = new Redemption(redemptionId)
   redemption.timestamp = event.block.timestamp
   redemption.blockNumber = event.block.number
   redemption.redeemer = event.params.redeemer.toHexString()
@@ -434,7 +426,7 @@ export function handleOrderFilled(event: OrderFilled): void {
   makerTx.outcomeIndex = BigInt.fromI32(0) // Would need to decode from tokenId
   makerTx.price = price
   makerTx.scaledPrice = price
-  makerTx.gasUsed = ZERO_BI // Gas data not critical for P&L
+  makerTx.gasUsed = ZERO_BI  // Removed event.receipt access to prevent failures
   makerTx.gasPrice = event.transaction.gasPrice
   makerTx.save()
   
@@ -452,7 +444,7 @@ export function handleOrderFilled(event: OrderFilled): void {
   takerTx.outcomeIndex = BigInt.fromI32(1)
   takerTx.price = price
   takerTx.scaledPrice = price
-  takerTx.gasUsed = ZERO_BI // Gas data not critical for P&L
+  takerTx.gasUsed = ZERO_BI  // Removed event.receipt access to prevent failures
   takerTx.gasPrice = event.transaction.gasPrice
   takerTx.save()
   

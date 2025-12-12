@@ -6,10 +6,10 @@
   "scripts": {
     "codegen": "graph codegen",
     "build": "graph build",
-    "deploy": "graph deploy --studio polymarket-enhanced",
-    "create-local": "graph create --node http://localhost:8020/ polymarket-enhanced",
-    "remove-local": "graph remove --node http://localhost:8020/ polymarket-enhanced",
-    "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 polymarket-enhanced"
+    "deploy": "graph deploy --studio polymarket-profit-and-loss-revised",
+    "create-local": "graph create --node http://localhost:8020/ polymarket-profit-and-loss-revised",
+    "remove-local": "graph remove --node http://localhost:8020/ polymarket-profit-and-loss-revised",
+    "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 polymarket-profit-and-loss-revised"
   },
   "dependencies": {
     "@graphprotocol/graph-cli": "0.98.1",
