@@ -31,8 +31,11 @@ import {
   OrderFilledEvent,
   OrdersMatchedEvent,
   DailyStats,
-  HourlyStats,
-  PricePoint
+  TokenPosition,
+  UserStats,
+  SimpleUserPosition,
+  SimpleMarketData,
+  
 } from "../generated/schema"
 
 // =============================================================================
@@ -63,13 +66,9 @@ function getOrCreateGlobal(): Global {
     global.buysQuantity = ZERO_BI
     global.sellsQuantity = ZERO_BI
     global.collateralVolume = ZERO_BI
-    global.scaledCollateralVolume = ZERO_BD
     global.collateralBuyVolume = ZERO_BI
-    global.scaledCollateralBuyVolume = ZERO_BD
     global.collateralSellVolume = ZERO_BI
-    global.scaledCollateralSellVolume = ZERO_BD
     global.collateralFees = ZERO_BI
-    global.scaledCollateralFees = ZERO_BD
     global.lastUpdated = ZERO_BI
     global.save()
   }
@@ -86,11 +85,12 @@ function getOrCreateAccount(address: Bytes, timestamp: BigInt): Account {
     account.isActive = false
     account.numTrades = ZERO_BI
     account.collateralVolume = ZERO_BI
-    account.scaledCollateralVolume = ZERO_BD
     account.totalRealizedPnl = ZERO_BI
-    account.scaledTotalRealizedPnl = ZERO_BD
     account.totalFeesPaid = ZERO_BI
-    account.scaledTotalFeesPaid = ZERO_BD
+    account.totalUnrealizedPnl = ZERO_BI
+    account.winRate = ZERO_BD
+    account.profitFactor = ZERO_BD
+    account.maxDrawdown = ZERO_BI
     account.save()
   }
   return account as Account
@@ -105,7 +105,6 @@ function getOrCreateCollateral(address: Bytes): Collateral {
     collateral.decimals = 0
     collateral.numMarkets = 0
     collateral.totalVolume = ZERO_BI
-    collateral.scaledTotalVolume = ZERO_BD
     collateral.save()
   }
   return collateral as Collateral
@@ -124,7 +123,6 @@ function getOrCreateCondition(conditionId: Bytes): Condition {
     condition.payoutDenominator = ZERO_BI
     condition.numMarkets = 0
     condition.totalVolume = ZERO_BI
-    condition.scaledTotalVolume = ZERO_BD
     condition.save()
   }
   return condition as Condition
@@ -140,7 +138,6 @@ function getOrCreateMarket(marketId: string, condition: Condition, outcomeIndex:
     market.isResolved = false
     market.resolutionTimestamp = null
     market.totalVolume = ZERO_BI
-    market.scaledTotalVolume = ZERO_BD
     market.numTrades = ZERO_BI
     market.numBuyers = 0
     market.numSellers = 0
@@ -158,15 +155,9 @@ function getOrCreateOrderbook(tokenId: BigInt): Orderbook {
     orderbook.buysQuantity = ZERO_BI
     orderbook.sellsQuantity = ZERO_BI
     orderbook.collateralVolume = ZERO_BI
-    orderbook.scaledCollateralVolume = ZERO_BD
     orderbook.collateralBuyVolume = ZERO_BI
-    orderbook.scaledCollateralBuyVolume = ZERO_BD
     orderbook.collateralSellVolume = ZERO_BI
-    orderbook.scaledCollateralSellVolume = ZERO_BD
     orderbook.totalFees = ZERO_BI
-    orderbook.scaledTotalFees = ZERO_BD
-    orderbook.averageTradeSize = ZERO_BD
-    orderbook.lastActiveDay = ZERO_BI
     orderbook.save()
   }
   return orderbook as Orderbook
@@ -187,9 +178,7 @@ function getOrCreateMarketPosition(user: Account, market: Market): MarketPositio
     position.netValue = ZERO_BI
     position.feesPaid = ZERO_BI
     position.realizedPnl = ZERO_BI
-    position.scaledRealizedPnl = ZERO_BD
     position.unrealizedPnl = ZERO_BI
-    position.scaledUnrealizedPnl = ZERO_BD
     position.firstTradeTimestamp = ZERO_BI
     position.lastTradeTimestamp = ZERO_BI
     position.save()
@@ -210,9 +199,7 @@ function updateDailyStats(timestamp: BigInt, volume: BigInt, fees: BigInt): void
     dailyStats.numTrades = ZERO_BI
     dailyStats.numTraders = 0
     dailyStats.volume = ZERO_BI
-    dailyStats.scaledVolume = ZERO_BD
     dailyStats.fees = ZERO_BI
-    dailyStats.scaledFees = ZERO_BD
     dailyStats.numActiveMarkets = 0
     dailyStats.numNewMarkets = 0
     dailyStats.numResolvedMarkets = 0
@@ -220,21 +207,12 @@ function updateDailyStats(timestamp: BigInt, volume: BigInt, fees: BigInt): void
   
   dailyStats.numTrades = dailyStats.numTrades.plus(ONE_BI)
   dailyStats.volume = dailyStats.volume.plus(volume)
-  dailyStats.scaledVolume = dailyStats.volume.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
   dailyStats.fees = dailyStats.fees.plus(fees)
-  dailyStats.scaledFees = dailyStats.fees.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
   dailyStats.save()
 }
 
 function createPricePoint(market: Market, timestamp: BigInt, price: BigDecimal, volume: BigInt): void {
   let pricePointId = market.id + "-" + timestamp.toString()
-  let pricePoint = new PricePoint(pricePointId)
-  pricePoint.market = market.id
-  pricePoint.timestamp = timestamp
-  pricePoint.price = price
-  pricePoint.volume = volume
-  pricePoint.scaledVolume = volume.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
-  pricePoint.save()
 }
 
 // =============================================================================
@@ -425,9 +403,6 @@ export function handleOrderFilled(event: OrderFilled): void {
   makerTx.outcomeTokensAmount = event.params.makerAmountFilled
   makerTx.outcomeIndex = BigInt.fromI32(0) // Would need to decode from tokenId
   makerTx.price = price
-  makerTx.scaledPrice = price
-  makerTx.gasUsed = ZERO_BI  // Removed event.receipt access to prevent failures
-  makerTx.gasPrice = event.transaction.gasPrice
   makerTx.save()
   
   // Taker transaction (opposite side)
@@ -443,18 +418,13 @@ export function handleOrderFilled(event: OrderFilled): void {
   takerTx.outcomeTokensAmount = event.params.takerAmountFilled
   takerTx.outcomeIndex = BigInt.fromI32(1)
   takerTx.price = price
-  takerTx.scaledPrice = price
-  takerTx.gasUsed = ZERO_BI  // Removed event.receipt access to prevent failures
-  takerTx.gasPrice = event.transaction.gasPrice
   takerTx.save()
   
   // Update maker account
   let makerAccount = getOrCreateAccount(event.params.maker, event.block.timestamp)
   makerAccount.numTrades = makerAccount.numTrades.plus(ONE_BI)
   makerAccount.collateralVolume = makerAccount.collateralVolume.plus(event.params.makerAmountFilled)
-  makerAccount.scaledCollateralVolume = makerAccount.collateralVolume.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
   makerAccount.totalFeesPaid = makerAccount.totalFeesPaid.plus(event.params.fee)
-  makerAccount.scaledTotalFeesPaid = makerAccount.totalFeesPaid.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
   makerAccount.lastTradedTimestamp = event.block.timestamp
   makerAccount.lastSeenTimestamp = event.block.timestamp
   makerAccount.isActive = true
@@ -464,7 +434,6 @@ export function handleOrderFilled(event: OrderFilled): void {
   let takerAccount = getOrCreateAccount(event.params.taker, event.block.timestamp)
   takerAccount.numTrades = takerAccount.numTrades.plus(ONE_BI)
   takerAccount.collateralVolume = takerAccount.collateralVolume.plus(event.params.takerAmountFilled)
-  takerAccount.scaledCollateralVolume = takerAccount.collateralVolume.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
   takerAccount.lastTradedTimestamp = event.block.timestamp
   takerAccount.lastSeenTimestamp = event.block.timestamp
   takerAccount.isActive = true
@@ -472,7 +441,6 @@ export function handleOrderFilled(event: OrderFilled): void {
   
   // Update market statistics
   market.totalVolume = market.totalVolume.plus(event.params.makerAmountFilled)
-  market.scaledTotalVolume = market.totalVolume.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
   market.numTrades = market.numTrades.plus(ONE_BI)
   market.currentPrice = price
   market.save()
@@ -516,19 +484,14 @@ export function handleOrderFilled(event: OrderFilled): void {
   let orderbook = getOrCreateOrderbook(event.params.makerAssetId)
   orderbook.tradesQuantity = orderbook.tradesQuantity.plus(ONE_BI)
   orderbook.collateralVolume = orderbook.collateralVolume.plus(event.params.makerAmountFilled)
-  orderbook.scaledCollateralVolume = orderbook.collateralVolume.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
   orderbook.totalFees = orderbook.totalFees.plus(event.params.fee)
-  orderbook.scaledTotalFees = orderbook.totalFees.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
-  orderbook.lastActiveDay = event.block.timestamp.div(BigInt.fromI32(86400))
   
   if (side == "Buy") {
     orderbook.buysQuantity = orderbook.buysQuantity.plus(ONE_BI)
     orderbook.collateralBuyVolume = orderbook.collateralBuyVolume.plus(event.params.makerAmountFilled)
-    orderbook.scaledCollateralBuyVolume = orderbook.collateralBuyVolume.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
   } else {
     orderbook.sellsQuantity = orderbook.sellsQuantity.plus(ONE_BI)
     orderbook.collateralSellVolume = orderbook.collateralSellVolume.plus(event.params.makerAmountFilled)
-    orderbook.scaledCollateralSellVolume = orderbook.collateralSellVolume.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
   }
   orderbook.save()
   
@@ -536,18 +499,14 @@ export function handleOrderFilled(event: OrderFilled): void {
   let global = getOrCreateGlobal()
   global.tradesQuantity = global.tradesQuantity.plus(ONE_BI)
   global.collateralVolume = global.collateralVolume.plus(event.params.makerAmountFilled)
-  global.scaledCollateralVolume = global.collateralVolume.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
   global.collateralFees = global.collateralFees.plus(event.params.fee)
-  global.scaledCollateralFees = global.collateralFees.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
   
   if (side == "Buy") {
     global.buysQuantity = global.buysQuantity.plus(ONE_BI)
     global.collateralBuyVolume = global.collateralBuyVolume.plus(event.params.makerAmountFilled)
-    global.scaledCollateralBuyVolume = global.collateralBuyVolume.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
   } else {
     global.sellsQuantity = global.sellsQuantity.plus(ONE_BI)
     global.collateralSellVolume = global.collateralSellVolume.plus(event.params.makerAmountFilled)
-    global.scaledCollateralSellVolume = global.collateralSellVolume.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
   }
   
   global.lastUpdated = event.block.timestamp
@@ -604,14 +563,12 @@ export function handleFeeCharged(event: FeeCharged): void {
   // FeeCharged event: receiver, tokenId, amount
   let account = getOrCreateAccount(event.params.receiver, event.block.timestamp)
   account.totalFeesPaid = account.totalFeesPaid.plus(event.params.amount)
-  account.scaledTotalFeesPaid = account.totalFeesPaid.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
   account.lastSeenTimestamp = event.block.timestamp
   account.save()
   
   // Update global fees
   let global = getOrCreateGlobal()
   global.collateralFees = global.collateralFees.plus(event.params.amount)
-  global.scaledCollateralFees = global.collateralFees.toBigDecimal().div(DECIMAL_FACTOR.toBigDecimal())
   global.lastUpdated = event.block.timestamp
   global.save()
   

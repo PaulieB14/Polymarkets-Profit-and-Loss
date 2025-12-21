@@ -32,7 +32,10 @@ dataSources:
         - OrderFilledEvent
         - OrdersMatchedEvent
         - DailyStats
-        - HourlyStats
+        - TokenPosition
+        - UserStats
+        - SimpleUserPosition
+        - SimpleMarketData
       abis:
         - name: ConditionalTokens
           file: ./abis/ConditionalTokens.json
