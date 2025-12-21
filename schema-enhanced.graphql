@@ -1,0 +1,585 @@
+# Enhanced Polymarket Subgraph Schema
+# Combining Graph Protocol best practices with Goldsky's proven patterns
+# Optimized for performance and data accuracy
+
+# =============================================================================
+# CORE ENTITIES (Your existing best practices)
+# =============================================================================
+
+type Global @entity(immutable: false) {
+  "Singleton entity for global statistics"
+  id: ID!
+  
+  # Market Statistics
+  numConditions: Int!
+  numOpenConditions: Int!
+  numClosedConditions: Int!
+  numMarkets: Int!
+  numActiveMarkets: Int!
+  
+  # User Statistics
+  numTraders: BigInt!
+  numUniqueTraders: BigInt!
+  
+  # Trading Statistics
+  tradesQuantity: BigInt!
+  buysQuantity: BigInt!
+  sellsQuantity: BigInt!
+  
+  # Volume Statistics (both raw and scaled)
+  collateralVolume: BigInt!
+  scaledCollateralVolume: BigDecimal!
+  collateralBuyVolume: BigInt!
+  scaledCollateralBuyVolume: BigDecimal!
+  collateralSellVolume: BigInt!
+  scaledCollateralSellVolume: BigDecimal!
+  
+  # Fee Statistics
+  collateralFees: BigInt!
+  scaledCollateralFees: BigDecimal!
+  
+  # NEW: Goldsky-style aggregations
+  totalRealizedPnl: BigInt!
+  scaledTotalRealizedPnl: BigDecimal!
+  totalUnrealizedPnl: BigInt!
+  scaledTotalUnrealizedPnl: BigDecimal!
+  
+  # Timestamps
+  lastUpdated: BigInt!
+}
+
+type Account @entity(immutable: false) {
+  "User address"
+  id: ID!
+  
+  # Account metadata
+  creationTimestamp: BigInt!
+  lastSeenTimestamp: BigInt!
+  lastTradedTimestamp: BigInt!
+  isActive: Boolean!
+  
+  # Trading statistics
+  numTrades: BigInt!
+  collateralVolume: BigInt!
+  scaledCollateralVolume: BigDecimal!
+  
+  # P&L tracking (enhanced with Goldsky patterns)
+  totalRealizedPnl: BigInt!
+  scaledTotalRealizedPnl: BigDecimal!
+  totalUnrealizedPnl: BigInt!
+  scaledTotalUnrealizedPnl: BigDecimal!
+  totalFeesPaid: BigInt!
+  scaledTotalFeesPaid: BigDecimal!
+  
+  # NEW: Goldsky-style performance metrics
+  winRate: BigDecimal!
+  avgTradeSize: BigDecimal!
+  profitFactor: BigDecimal!
+  maxDrawdown: BigDecimal!
+  
+  # Relationships using @derivedFrom (no large arrays)
+  positions: [MarketPosition!] @derivedFrom(field: "user")
+  tokenPositions: [TokenPosition!] @derivedFrom(field: "user") # NEW: Goldsky pattern
+  transactions: [Transaction!] @derivedFrom(field: "user")
+  splits: [Split!] @derivedFrom(field: "stakeholder")
+  merges: [Merge!] @derivedFrom(field: "stakeholder")
+  redemptions: [Redemption!] @derivedFrom(field: "redeemer")
+  marketProfits: [MarketProfit!] @derivedFrom(field: "user")
+}
+
+# =============================================================================
+# NEW: GOLDSKY-STYLE TOKEN POSITIONS (Proven Pattern)
+# =============================================================================
+
+type TokenPosition @entity(immutable: false) {
+  "User Address + Token ID (Goldsky's proven pattern)"
+  id: ID! # format: "user-tokenId"
+  
+  # Core identifiers
+  user: Account!
+  tokenId: BigInt!
+  market: Market!
+  
+  # Goldsky's proven P&L fields
+  amount: BigInt! # current holdings
+  avgPrice: BigInt! # weighted average price paid (in basis points)
+  realizedPnl: BigInt! # realized profits/losses
+  totalBought: BigInt! # total amount ever bought
+  totalSold: BigInt! # total amount ever sold
+  
+  # Enhanced fields (your advanced tracking)
+  scaledAmount: BigDecimal!
+  scaledAvgPrice: BigDecimal!
+  scaledRealizedPnl: BigDecimal!
+  scaledTotalBought: BigDecimal!
+  scaledTotalSold: BigDecimal!
+  
+  # Performance metrics
+  unrealizedPnl: BigInt!
+  scaledUnrealizedPnl: BigDecimal!
+  totalFeesPaid: BigInt!
+  scaledTotalFeesPaid: BigDecimal!
+  
+  # Trading history
+  numTrades: BigInt!
+  firstTradeTimestamp: BigInt!
+  lastTradeTimestamp: BigInt!
+  
+  # Status
+  isActive: Boolean!
+}
+
+# =============================================================================
+# ENHANCED USER STATS (Goldsky-inspired aggregations)
+# =============================================================================
+
+type UserStats @entity(immutable: false) {
+  "User address (simplified aggregation like Goldsky)"
+  id: ID!
+  user: Account!
+  
+  # Simple aggregations (Goldsky style)
+  totalRealizedPnl: BigInt!
+  totalVolume: BigInt!
+  activePositions: Int!
+  totalPositions: Int!
+  
+  # Performance metrics
+  winRate: BigDecimal! # percentage of profitable positions
+  avgHoldTime: BigInt! # average position hold time
+  largestWin: BigInt!
+  largestLoss: BigInt!
+  
+  # Risk metrics
+  sharpeRatio: BigDecimal!
+  maxDrawdown: BigDecimal!
+  volatility: BigDecimal!
+  
+  # Scaled versions
+  scaledTotalRealizedPnl: BigDecimal!
+  scaledTotalVolume: BigDecimal!
+  scaledLargestWin: BigDecimal!
+  scaledLargestLoss: BigDecimal!
+  
+  # Timestamps
+  lastUpdated: BigInt!
+}
+
+# =============================================================================
+# EXISTING ENTITIES (Enhanced)
+# =============================================================================
+
+type Collateral @entity(immutable: false) {
+  "Token address"
+  id: ID!
+  name: String!
+  symbol: String!
+  decimals: Int!
+  
+  # Usage statistics
+  numMarkets: Int!
+  totalVolume: BigInt!
+  scaledTotalVolume: BigDecimal!
+  
+  # NEW: P&L tracking per collateral
+  totalRealizedPnl: BigInt!
+  scaledTotalRealizedPnl: BigDecimal!
+  
+  # Relationships using @derivedFrom
+  splits: [Split!] @derivedFrom(field: "collateralToken")
+  merges: [Merge!] @derivedFrom(field: "collateralToken")
+  redemptions: [Redemption!] @derivedFrom(field: "collateralToken")
+}
+
+type Condition @entity(immutable: false) {
+  id: ID!
+  oracle: Bytes!
+  questionId: Bytes!
+  outcomeSlotCount: Int!
+  
+  # Resolution data
+  resolutionTimestamp: BigInt
+  resolutionHash: Bytes
+  payoutNumerators: [BigInt!]
+  payoutDenominator: BigInt
+  
+  # Enhanced statistics
+  numMarkets: Int!
+  totalVolume: BigInt!
+  scaledTotalVolume: BigDecimal!
+  totalRealizedPnl: BigInt! # NEW
+  scaledTotalRealizedPnl: BigDecimal! # NEW
+  
+  # Relationships using @derivedFrom (no large arrays)
+  markets: [Market!] @derivedFrom(field: "condition")
+  splits: [Split!] @derivedFrom(field: "condition")
+  merges: [Merge!] @derivedFrom(field: "condition")
+  redemptions: [Redemption!] @derivedFrom(field: "condition")
+  marketProfits: [MarketProfit!] @derivedFrom(field: "condition")
+  tokenPositions: [TokenPosition!] @derivedFrom(field: "market") # NEW
+}
+
+type Market @entity(immutable: false) {
+  "Market identifier (condition + outcome index)"
+  id: ID!
+  condition: Condition!
+  outcomeIndex: BigInt!
+  
+  # Market metadata
+  isActive: Boolean!
+  isResolved: Boolean!
+  resolutionTimestamp: BigInt
+  
+  # Trading data
+  totalVolume: BigInt!
+  scaledTotalVolume: BigDecimal!
+  numTrades: BigInt!
+  numBuyers: Int!
+  numSellers: Int!
+  
+  # Price data
+  currentPrice: BigDecimal
+  lastPrice: BigDecimal # NEW
+  priceChange24h: BigDecimal # NEW
+  
+  # NEW: Market P&L aggregations
+  totalRealizedPnl: BigInt!
+  scaledTotalRealizedPnl: BigDecimal!
+  avgTradeSize: BigDecimal!
+  
+  # Relationships using @derivedFrom (no large arrays)
+  positions: [MarketPosition!] @derivedFrom(field: "market")
+  tokenPositions: [TokenPosition!] @derivedFrom(field: "market") # NEW
+  transactions: [Transaction!] @derivedFrom(field: "market")
+  priceHistory: [PricePoint!] @derivedFrom(field: "market")
+}
+
+type PricePoint @entity(immutable: true) {
+  "Timestamp + Market ID"
+  id: ID!
+  market: Market!
+  timestamp: BigInt!
+  price: BigDecimal!
+  volume: BigInt!
+  scaledVolume: BigDecimal!
+  
+  # NEW: Enhanced price tracking
+  source: String! # "trade" or "oracle"
+  confidence: BigDecimal! # price confidence score
+}
+
+# =============================================================================
+# POSITION TRACKING (Enhanced with Goldsky patterns)
+# =============================================================================
+
+type MarketPosition @entity(immutable: false) {
+  "User + Market ID"
+  id: ID!
+  user: Account!
+  market: Market!
+  
+  # Position data
+  quantityBought: BigInt!
+  quantitySold: BigInt!
+  netQuantity: BigInt!
+  
+  # Value tracking
+  valueBought: BigInt!
+  valueSold: BigInt!
+  netValue: BigInt!
+  feesPaid: BigInt!
+  
+  # P&L tracking (enhanced with Goldsky logic)
+  realizedPnl: BigInt!
+  scaledRealizedPnl: BigDecimal!
+  unrealizedPnl: BigInt!
+  scaledUnrealizedPnl: BigDecimal!
+  
+  # NEW: Goldsky-style fields
+  avgBuyPrice: BigInt! # weighted average buy price
+  avgSellPrice: BigInt! # weighted average sell price
+  scaledAvgBuyPrice: BigDecimal!
+  scaledAvgSellPrice: BigDecimal!
+  
+  # Performance metrics
+  holdTime: BigInt! # time between first and last trade
+  numTrades: BigInt!
+  
+  # Timestamps
+  firstTradeTimestamp: BigInt!
+  lastTradeTimestamp: BigInt!
+}
+
+type MarketProfit @entity(immutable: false) {
+  "User + Condition ID"
+  id: ID!
+  user: Account!
+  condition: Condition!
+  profit: BigInt!
+  scaledProfit: BigDecimal!
+  
+  # NEW: Enhanced profit tracking
+  totalVolume: BigInt!
+  scaledTotalVolume: BigDecimal!
+  profitMargin: BigDecimal! # profit / volume
+}
+
+# =============================================================================
+# TRADING DATA (Enhanced)
+# =============================================================================
+
+enum TradeType {
+  Buy
+  Sell
+}
+
+type Transaction @entity(immutable: true) {
+  "Transaction hash"
+  id: ID!
+  type: TradeType!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  
+  # Participants
+  user: Account!
+  market: Market!
+  
+  # Trade details
+  tradeAmount: BigInt!
+  feeAmount: BigInt!
+  outcomeTokensAmount: BigInt!
+  outcomeIndex: BigInt!
+  
+  # Price data
+  price: BigDecimal!
+  scaledPrice: BigDecimal!
+  
+  # NEW: Enhanced transaction data
+  tokenId: BigInt! # for TokenPosition tracking
+  priceImpact: BigDecimal! # price impact of this trade
+  slippage: BigDecimal! # slippage experienced
+  
+  # Gas data
+  gasUsed: BigInt!
+  gasPrice: BigInt!
+}
+
+# =============================================================================
+# ORDERBOOK DATA (Enhanced)
+# =============================================================================
+
+type Orderbook @entity(immutable: false) {
+  "Token ID"
+  id: ID!
+  
+  # Trading statistics
+  tradesQuantity: BigInt!
+  buysQuantity: BigInt!
+  sellsQuantity: BigInt!
+  
+  # Volume data
+  collateralVolume: BigInt!
+  scaledCollateralVolume: BigDecimal!
+  collateralBuyVolume: BigInt!
+  scaledCollateralBuyVolume: BigDecimal!
+  collateralSellVolume: BigInt!
+  scaledCollateralSellVolume: BigDecimal!
+  
+  # Fee data
+  totalFees: BigInt!
+  scaledTotalFees: BigDecimal!
+  
+  # Analytics
+  averageTradeSize: BigDecimal!
+  lastActiveDay: BigInt!
+  
+  # NEW: Market making metrics
+  bidAskSpread: BigDecimal!
+  marketDepth: BigDecimal!
+  turnoverRate: BigDecimal!
+  
+  # Relationships using @derivedFrom (no large arrays)
+  orders: [OrderFilledEvent!] @derivedFrom(field: "orderbook")
+}
+
+type OrderFilledEvent @entity(immutable: true) {
+  "Transaction hash + Order hash"
+  id: ID!
+  transactionHash: Bytes!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  
+  # Order details
+  orderHash: Bytes!
+  maker: Bytes!
+  taker: Bytes!
+  makerAssetId: BigInt!
+  takerAssetId: BigInt!
+  makerAmountFilled: BigInt!
+  takerAmountFilled: BigInt!
+  fee: BigInt!
+  
+  # Market data
+  orderbook: Orderbook!
+  side: String!
+  price: BigDecimal!
+  size: BigInt!
+  
+  # NEW: Enhanced order data
+  fillPercentage: BigDecimal! # how much of order was filled
+  timeToFill: BigInt! # time from order placement to fill
+}
+
+type OrdersMatchedEvent @entity(immutable: true) {
+  "Transaction hash"
+  id: ID!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  
+  # Match details
+  makerAssetID: BigInt!
+  takerAssetID: BigInt!
+  makerAmountFilled: BigInt!
+  takerAmountFilled: BigInt!
+  
+  # NEW: Match analytics
+  matchPrice: BigDecimal!
+  volumeMatched: BigInt!
+  scaledVolumeMatched: BigDecimal!
+}
+
+# =============================================================================
+# POSITION MANAGEMENT (Existing)
+# =============================================================================
+
+type Split @entity(immutable: true) {
+  "Transaction hash"
+  id: ID!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  
+  # Participants
+  stakeholder: Account!
+  collateralToken: Collateral!
+  
+  # Split details
+  parentCollectionId: Bytes!
+  condition: Condition!
+  partition: [BigInt!]!
+  amount: BigInt!
+}
+
+type Merge @entity(immutable: true) {
+  "Transaction hash"
+  id: ID!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  
+  # Participants
+  stakeholder: Account!
+  collateralToken: Collateral!
+  
+  # Merge details
+  parentCollectionId: Bytes!
+  condition: Condition!
+  partition: [BigInt!]!
+  amount: BigInt!
+}
+
+type Redemption @entity(immutable: true) {
+  "Transaction hash"
+  id: ID!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  
+  # Participants
+  redeemer: Account!
+  collateralToken: Collateral!
+  
+  # Redemption details
+  parentCollectionId: Bytes!
+  condition: Condition!
+  indexSets: [BigInt!]!
+  payout: BigInt!
+}
+
+# =============================================================================
+# ENHANCED ANALYTICS (Your existing + Goldsky patterns)
+# =============================================================================
+
+type DailyStats @entity(immutable: false) {
+  "YYYY-MM-DD format"
+  id: ID!
+  date: String!
+  timestamp: BigInt!
+  
+  # Trading stats
+  numTrades: BigInt!
+  numTraders: Int!
+  volume: BigInt!
+  scaledVolume: BigDecimal!
+  fees: BigInt!
+  scaledFees: BigDecimal!
+  
+  # Market stats
+  numActiveMarkets: Int!
+  numNewMarkets: Int!
+  numResolvedMarkets: Int!
+  
+  # NEW: P&L stats (Goldsky-inspired)
+  totalRealizedPnl: BigInt!
+  scaledTotalRealizedPnl: BigDecimal!
+  avgTradeSize: BigDecimal!
+  winRate: BigDecimal!
+  
+  # NEW: Market health metrics
+  avgBidAskSpread: BigDecimal!
+  marketDepth: BigDecimal!
+  priceVolatility: BigDecimal!
+}
+
+type HourlyStats @entity(immutable: false) {
+  "YYYY-MM-DD-HH format"
+  id: ID!
+  date: String!
+  hour: Int!
+  timestamp: BigInt!
+  
+  # Trading stats
+  numTrades: BigInt!
+  numTraders: Int!
+  volume: BigInt!
+  scaledVolume: BigDecimal!
+  fees: BigInt!
+  scaledFees: BigDecimal!
+  
+  # NEW: Hourly P&L tracking
+  totalRealizedPnl: BigInt!
+  scaledTotalRealizedPnl: BigDecimal!
+  avgTradeSize: BigDecimal!
+}
+
+# =============================================================================
+# NEW: GOLDSKY-STYLE SIMPLE QUERIES
+# =============================================================================
+
+type SimpleUserPosition @entity(immutable: false) {
+  "Simplified view for fast queries (Goldsky pattern)"
+  id: ID! # user-tokenId
+  user: String! # user address as string
+  tokenId: BigInt!
+  amount: BigInt!
+  avgPrice: BigInt!
+  realizedPnl: BigInt!
+  totalBought: BigInt!
+}
+
+type SimpleMarketData @entity(immutable: false) {
+  "Simplified market view for fast queries"
+  id: ID! # market id
+  tokenId: BigInt!
+  currentPrice: BigDecimal!
+  volume24h: BigInt!
+  priceChange24h: BigDecimal!
+  isActive: Boolean!
+}
