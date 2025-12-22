@@ -48,102 +48,6 @@ const ZERO_BD = BigDecimal.fromString("0")
 const ONE_BD = BigDecimal.fromString("1")
 
 // USDC has 6 decimals
-
-// =============================================================================
-// P&L CALCULATION FUNCTIONS (Goldsky-style)
-// =============================================================================
-
-function updateUserPnL(account: Account, tokenId: BigInt, amount: BigInt, price: BigDecimal, isSell: boolean, market: Market): void {
-  // Get or create TokenPosition (Goldsky-style entity)
-  let tokenPositionId = account.id + "-" + tokenId.toString()
-  let tokenPosition = TokenPosition.load(tokenPositionId)
-  
-  if (tokenPosition === null) {
-    tokenPosition = new TokenPosition(tokenPositionId)
-    tokenPosition.user = account.id
-    tokenPosition.market = market.id
-    tokenPosition.tokenId = tokenId
-    tokenPosition.amount = ZERO_BI
-    tokenPosition.avgPrice = ZERO_BI
-    tokenPosition.realizedPnl = ZERO_BI
-    tokenPosition.totalBought = ZERO_BI
-  }
-  
-  if (isSell) {
-    // SELL: Calculate realized P&L
-    if (tokenPosition.amount.gt(ZERO_BI)) {
-      let sellAmount = amount.gt(tokenPosition.amount) ? tokenPosition.amount : amount
-      
-      // Calculate cost basis and sale value in USDC terms
-      let avgPriceDecimal = tokenPosition.avgPrice.toBigDecimal().div(BigDecimal.fromString("1000000"))
-      let costBasisDecimal = avgPriceDecimal.times(sellAmount.toBigDecimal())
-      let saleValueDecimal = price.times(sellAmount.toBigDecimal())
-      let realizedPnlDecimal = saleValueDecimal.minus(costBasisDecimal)
-      
-      // Convert to BigInt for storage (multiply by 10^6 for USDC precision)
-      let realizedPnlBigInt = BigInt.fromString(realizedPnlDecimal.times(BigDecimal.fromString("1000000")).toString().split('.')[0])
-      
-      // Update TokenPosition
-      tokenPosition.realizedPnl = tokenPosition.realizedPnl.plus(realizedPnlBigInt)
-      tokenPosition.amount = tokenPosition.amount.minus(sellAmount)
-      
-      // Update Account P&L
-      account.totalRealizedPnl = account.totalRealizedPnl.plus(realizedPnlBigInt)
-    }
-  } else {
-    // BUY: Update average price and position
-    let newTotalAmount = tokenPosition.amount.plus(amount)
-    let currentValueDecimal = tokenPosition.avgPrice.toBigDecimal().div(BigDecimal.fromString("1000000")).times(tokenPosition.amount.toBigDecimal())
-    let newValueDecimal = price.times(amount.toBigDecimal())
-    let totalValueDecimal = currentValueDecimal.plus(newValueDecimal)
-    
-    if (newTotalAmount.gt(ZERO_BI)) {
-      let avgPriceDecimal = totalValueDecimal.div(newTotalAmount.toBigDecimal())
-      // Convert to BigInt (multiply by 10^6 for USDC precision)
-      tokenPosition.avgPrice = BigInt.fromString(avgPriceDecimal.times(BigDecimal.fromString("1000000")).toString().split('.')[0])
-    }
-    
-    tokenPosition.amount = newTotalAmount
-    tokenPosition.totalBought = tokenPosition.totalBought.plus(amount)
-  }
-  
-  tokenPosition.save()
-  
-  // Calculate unrealized P&L for all positions
-  updateUnrealizedPnL(account)
-  
-  // Update win rate and other analytics
-  updateAccountAnalytics(account)
-}
-
-function updateUnrealizedPnL(account: Account): void {
-  // This would require current market prices - simplified for now
-  // In a full implementation, you'd iterate through all TokenPositions for this user
-  // and calculate unrealized P&L based on current market prices
-  account.totalUnrealizedPnl = ZERO_BI // Placeholder - would need current prices
-}
-
-function updateAccountAnalytics(account: Account): void {
-  // Calculate win rate, profit factor, max drawdown
-  // This is simplified - full implementation would track trade history
-  
-  if (account.numTrades.gt(ZERO_BI)) {
-    // Simplified win rate calculation
-    if (account.totalRealizedPnl.gt(ZERO_BI)) {
-      account.winRate = BigDecimal.fromString("0.6") // Placeholder
-    } else {
-      account.winRate = BigDecimal.fromString("0.4") // Placeholder
-    }
-    
-    // Simplified profit factor
-    account.profitFactor = BigDecimal.fromString("1.2") // Placeholder
-    
-    // Max drawdown (simplified)
-    if (account.totalRealizedPnl.lt(account.maxDrawdown)) {
-      account.maxDrawdown = account.totalRealizedPnl
-    }
-  }
-}
 const USDC_DECIMALS = 6
 const DECIMAL_FACTOR = BigInt.fromI32(10).pow(USDC_DECIMALS as u8)
 
@@ -238,7 +142,6 @@ function getOrCreateMarket(marketId: string, condition: Condition, outcomeIndex:
     market.numBuyers = 0
     market.numSellers = 0
     market.currentPrice = null
-    market.lastPriceUpdate = ZERO_BI
     market.save()
   }
   return market as Market
@@ -310,67 +213,6 @@ function updateDailyStats(timestamp: BigInt, volume: BigInt, fees: BigInt): void
 
 function createPricePoint(market: Market, timestamp: BigInt, price: BigDecimal, volume: BigInt): void {
   let pricePointId = market.id + "-" + timestamp.toString()
-}
-
-// Helper functions for new entities
-function getOrCreateTokenPosition(userId: string, tokenId: BigInt, marketId: string): TokenPosition {
-  let tokenPositionId = userId + "-" + tokenId.toString()
-  let tokenPosition = TokenPosition.load(tokenPositionId)
-  
-  if (tokenPosition === null) {
-    tokenPosition = new TokenPosition(tokenPositionId)
-    tokenPosition.user = userId
-    tokenPosition.market = marketId
-    tokenPosition.tokenId = tokenId
-    tokenPosition.amount = ZERO_BI
-    tokenPosition.avgPrice = ZERO_BI
-    tokenPosition.realizedPnl = ZERO_BI
-    tokenPosition.totalBought = ZERO_BI
-    tokenPosition.save()
-  }
-  
-  return tokenPosition as TokenPosition
-}
-
-function getOrCreateUserStats(userId: string): UserStats {
-  let userStats = UserStats.load(userId)
-  
-  if (userStats === null) {
-    userStats = new UserStats(userId)
-    userStats.user = userId
-    userStats.totalTrades = ZERO_BI
-    userStats.totalVolume = ZERO_BI
-    userStats.totalPnl = ZERO_BI
-    userStats.winRate = ZERO_BD
-    userStats.save()
-  }
-  
-  return userStats as UserStats
-}
-
-function getOrCreateSimpleUserPosition(userId: string, tokenId: BigInt): SimpleUserPosition {
-  let positionId = userId + "-" + tokenId.toString()
-  let position = SimpleUserPosition.load(positionId)
-  
-  if (position === null) {
-    position = new SimpleUserPosition(positionId)
-    // Note: SimpleUserPosition fields will be defined in schema
-    position.save()
-  }
-  
-  return position as SimpleUserPosition
-}
-
-function getOrCreateSimpleMarketData(marketId: string): SimpleMarketData {
-  let marketData = SimpleMarketData.load(marketId)
-  
-  if (marketData === null) {
-    marketData = new SimpleMarketData(marketId)
-    // Note: SimpleMarketData fields will be defined in schema
-    marketData.save()
-  }
-  
-  return marketData as SimpleMarketData
 }
 
 // =============================================================================
@@ -578,7 +420,7 @@ export function handleOrderFilled(event: OrderFilled): void {
   takerTx.price = price
   takerTx.save()
   
-  // Update maker account with P&L calculations
+  // Update maker account
   let makerAccount = getOrCreateAccount(event.params.maker, event.block.timestamp)
   makerAccount.numTrades = makerAccount.numTrades.plus(ONE_BI)
   makerAccount.collateralVolume = makerAccount.collateralVolume.plus(event.params.makerAmountFilled)
@@ -586,49 +428,36 @@ export function handleOrderFilled(event: OrderFilled): void {
   makerAccount.lastTradedTimestamp = event.block.timestamp
   makerAccount.lastSeenTimestamp = event.block.timestamp
   makerAccount.isActive = true
-  
-  // Update P&L for maker (Goldsky-style)
-  updateUserPnL(makerAccount, event.params.makerAssetId, event.params.makerAmountFilled, price, side == "Sell", market)
   makerAccount.save()
   
-  // Update taker account with P&L calculations
+  // Update taker account
   let takerAccount = getOrCreateAccount(event.params.taker, event.block.timestamp)
   takerAccount.numTrades = takerAccount.numTrades.plus(ONE_BI)
   takerAccount.collateralVolume = takerAccount.collateralVolume.plus(event.params.takerAmountFilled)
   takerAccount.lastTradedTimestamp = event.block.timestamp
   takerAccount.lastSeenTimestamp = event.block.timestamp
   takerAccount.isActive = true
-  
-  // Update P&L for taker (opposite side) - fix the logic here
-  let takerIsSell = side == "Sell" ? false : true  // Taker does opposite of maker
-  updateUserPnL(takerAccount, event.params.takerAssetId, event.params.takerAmountFilled, price, takerIsSell, market)
   takerAccount.save()
   
   // Update market statistics
   market.totalVolume = market.totalVolume.plus(event.params.makerAmountFilled)
   market.numTrades = market.numTrades.plus(ONE_BI)
   market.currentPrice = price
-  market.lastPriceUpdate = event.block.timestamp
   market.save()
   
   // Create price point for historical tracking
   createPricePoint(market, event.block.timestamp, price, event.params.makerAmountFilled)
   
-  // Update market positions with proper value calculations
+  // Update market positions
   let makerPosition = getOrCreateMarketPosition(makerAccount, market)
   if (side == "Sell") {
     makerPosition.quantitySold = makerPosition.quantitySold.plus(event.params.makerAmountFilled)
-    // Value sold = quantity * price
-    let valueSold = price.times(event.params.makerAmountFilled.toBigDecimal())
-    makerPosition.valueSold = makerPosition.valueSold.plus(BigInt.fromString(valueSold.toString().split('.')[0]))
+    makerPosition.valueSold = makerPosition.valueSold.plus(event.params.makerAmountFilled)
   } else {
     makerPosition.quantityBought = makerPosition.quantityBought.plus(event.params.makerAmountFilled)
-    // Value bought = quantity * price  
-    let valueBought = price.times(event.params.makerAmountFilled.toBigDecimal())
-    makerPosition.valueBought = makerPosition.valueBought.plus(BigInt.fromString(valueBought.toString().split('.')[0]))
+    makerPosition.valueBought = makerPosition.valueBought.plus(event.params.makerAmountFilled)
   }
   makerPosition.netQuantity = makerPosition.quantityBought.minus(makerPosition.quantitySold)
-  makerPosition.netValue = makerPosition.valueBought.minus(makerPosition.valueSold)
   makerPosition.feesPaid = makerPosition.feesPaid.plus(event.params.fee)
   makerPosition.lastTradeTimestamp = event.block.timestamp
   if (makerPosition.firstTradeTimestamp.equals(ZERO_BI)) {
@@ -638,18 +467,13 @@ export function handleOrderFilled(event: OrderFilled): void {
   
   let takerPosition = getOrCreateMarketPosition(takerAccount, market)
   if (side == "Sell") {
-    // Taker is buying when maker is selling
     takerPosition.quantityBought = takerPosition.quantityBought.plus(event.params.takerAmountFilled)
-    let valueBought = price.times(event.params.takerAmountFilled.toBigDecimal())
-    takerPosition.valueBought = takerPosition.valueBought.plus(BigInt.fromString(valueBought.toString().split('.')[0]))
+    takerPosition.valueBought = takerPosition.valueBought.plus(event.params.takerAmountFilled)
   } else {
-    // Taker is selling when maker is buying
     takerPosition.quantitySold = takerPosition.quantitySold.plus(event.params.takerAmountFilled)
-    let valueSold = price.times(event.params.takerAmountFilled.toBigDecimal())
-    takerPosition.valueSold = takerPosition.valueSold.plus(BigInt.fromString(valueSold.toString().split('.')[0]))
+    takerPosition.valueSold = takerPosition.valueSold.plus(event.params.takerAmountFilled)
   }
   takerPosition.netQuantity = takerPosition.quantityBought.minus(takerPosition.quantitySold)
-  takerPosition.netValue = takerPosition.valueBought.minus(takerPosition.valueSold)
   takerPosition.lastTradeTimestamp = event.block.timestamp
   if (takerPosition.firstTradeTimestamp.equals(ZERO_BI)) {
     takerPosition.firstTradeTimestamp = event.block.timestamp

@@ -194,19 +194,6 @@ export class Global extends Entity {
     this.set("collateralVolume", Value.fromBigInt(value));
   }
 
-  get scaledCollateralVolume(): BigDecimal {
-    let value = this.get("scaledCollateralVolume");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toBigDecimal();
-    }
-  }
-
-  set scaledCollateralVolume(value: BigDecimal) {
-    this.set("scaledCollateralVolume", Value.fromBigDecimal(value));
-  }
-
   get collateralBuyVolume(): BigInt {
     let value = this.get("collateralBuyVolume");
     if (!value || value.kind == ValueKind.NULL) {
@@ -218,19 +205,6 @@ export class Global extends Entity {
 
   set collateralBuyVolume(value: BigInt) {
     this.set("collateralBuyVolume", Value.fromBigInt(value));
-  }
-
-  get scaledCollateralBuyVolume(): BigDecimal {
-    let value = this.get("scaledCollateralBuyVolume");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toBigDecimal();
-    }
-  }
-
-  set scaledCollateralBuyVolume(value: BigDecimal) {
-    this.set("scaledCollateralBuyVolume", Value.fromBigDecimal(value));
   }
 
   get collateralSellVolume(): BigInt {
@@ -246,19 +220,6 @@ export class Global extends Entity {
     this.set("collateralSellVolume", Value.fromBigInt(value));
   }
 
-  get scaledCollateralSellVolume(): BigDecimal {
-    let value = this.get("scaledCollateralSellVolume");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toBigDecimal();
-    }
-  }
-
-  set scaledCollateralSellVolume(value: BigDecimal) {
-    this.set("scaledCollateralSellVolume", Value.fromBigDecimal(value));
-  }
-
   get collateralFees(): BigInt {
     let value = this.get("collateralFees");
     if (!value || value.kind == ValueKind.NULL) {
@@ -270,19 +231,6 @@ export class Global extends Entity {
 
   set collateralFees(value: BigInt) {
     this.set("collateralFees", Value.fromBigInt(value));
-  }
-
-  get scaledCollateralFees(): BigDecimal {
-    let value = this.get("scaledCollateralFees");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toBigDecimal();
-    }
-  }
-
-  set scaledCollateralFees(value: BigDecimal) {
-    this.set("scaledCollateralFees", Value.fromBigDecimal(value));
   }
 
   get lastUpdated(): BigInt {
@@ -416,19 +364,6 @@ export class Account extends Entity {
     this.set("collateralVolume", Value.fromBigInt(value));
   }
 
-  get scaledCollateralVolume(): BigDecimal {
-    let value = this.get("scaledCollateralVolume");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toBigDecimal();
-    }
-  }
-
-  set scaledCollateralVolume(value: BigDecimal) {
-    this.set("scaledCollateralVolume", Value.fromBigDecimal(value));
-  }
-
   get totalRealizedPnl(): BigInt {
     let value = this.get("totalRealizedPnl");
     if (!value || value.kind == ValueKind.NULL) {
@@ -442,17 +377,17 @@ export class Account extends Entity {
     this.set("totalRealizedPnl", Value.fromBigInt(value));
   }
 
-  get scaledTotalRealizedPnl(): BigDecimal {
-    let value = this.get("scaledTotalRealizedPnl");
+  get totalUnrealizedPnl(): BigInt {
+    let value = this.get("totalUnrealizedPnl");
     if (!value || value.kind == ValueKind.NULL) {
       throw new Error("Cannot return null for a required field.");
     } else {
-      return value.toBigDecimal();
+      return value.toBigInt();
     }
   }
 
-  set scaledTotalRealizedPnl(value: BigDecimal) {
-    this.set("scaledTotalRealizedPnl", Value.fromBigDecimal(value));
+  set totalUnrealizedPnl(value: BigInt) {
+    this.set("totalUnrealizedPnl", Value.fromBigInt(value));
   }
 
   get totalFeesPaid(): BigInt {
@@ -468,8 +403,8 @@ export class Account extends Entity {
     this.set("totalFeesPaid", Value.fromBigInt(value));
   }
 
-  get scaledTotalFeesPaid(): BigDecimal {
-    let value = this.get("scaledTotalFeesPaid");
+  get winRate(): BigDecimal {
+    let value = this.get("winRate");
     if (!value || value.kind == ValueKind.NULL) {
       throw new Error("Cannot return null for a required field.");
     } else {
@@ -477,8 +412,34 @@ export class Account extends Entity {
     }
   }
 
-  set scaledTotalFeesPaid(value: BigDecimal) {
-    this.set("scaledTotalFeesPaid", Value.fromBigDecimal(value));
+  set winRate(value: BigDecimal) {
+    this.set("winRate", Value.fromBigDecimal(value));
+  }
+
+  get profitFactor(): BigDecimal {
+    let value = this.get("profitFactor");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigDecimal();
+    }
+  }
+
+  set profitFactor(value: BigDecimal) {
+    this.set("profitFactor", Value.fromBigDecimal(value));
+  }
+
+  get maxDrawdown(): BigInt {
+    let value = this.get("maxDrawdown");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set maxDrawdown(value: BigInt) {
+    this.set("maxDrawdown", Value.fromBigInt(value));
   }
 
   get positions(): MarketPositionLoader {
@@ -518,6 +479,22 @@ export class Account extends Entity {
       "Account",
       this.get("id")!.toString(),
       "marketProfits",
+    );
+  }
+
+  get tokenPositions(): TokenPositionLoader {
+    return new TokenPositionLoader(
+      "Account",
+      this.get("id")!.toString(),
+      "tokenPositions",
+    );
+  }
+
+  get userStats(): UserStatsLoader {
+    return new UserStatsLoader(
+      "Account",
+      this.get("id")!.toString(),
+      "userStats",
     );
   }
 }
@@ -624,19 +601,6 @@ export class Collateral extends Entity {
 
   set totalVolume(value: BigInt) {
     this.set("totalVolume", Value.fromBigInt(value));
-  }
-
-  get scaledTotalVolume(): BigDecimal {
-    let value = this.get("scaledTotalVolume");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toBigDecimal();
-    }
-  }
-
-  set scaledTotalVolume(value: BigDecimal) {
-    this.set("scaledTotalVolume", Value.fromBigDecimal(value));
   }
 
   get splits(): SplitLoader {
@@ -855,19 +819,6 @@ export class Condition extends Entity {
   set totalVolume(value: BigInt) {
     this.set("totalVolume", Value.fromBigInt(value));
   }
-
-  get scaledTotalVolume(): BigDecimal {
-    let value = this.get("scaledTotalVolume");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toBigDecimal();
-    }
-  }
-
-  set scaledTotalVolume(value: BigDecimal) {
-    this.set("scaledTotalVolume", Value.fromBigDecimal(value));
-  }
 }
 
 export class Market extends Entity {
@@ -991,19 +942,6 @@ export class Market extends Entity {
     this.set("totalVolume", Value.fromBigInt(value));
   }
 
-  get scaledTotalVolume(): BigDecimal {
-    let value = this.get("scaledTotalVolume");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toBigDecimal();
-    }
-  }
-
-  set scaledTotalVolume(value: BigDecimal) {
-    this.set("scaledTotalVolume", Value.fromBigDecimal(value));
-  }
-
   get numTrades(): BigInt {
     let value = this.get("numTrades");
     if (!value || value.kind == ValueKind.NULL) {
@@ -1060,6 +998,19 @@ export class Market extends Entity {
     }
   }
 
+  get lastPriceUpdate(): BigInt {
+    let value = this.get("lastPriceUpdate");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set lastPriceUpdate(value: BigInt) {
+    this.set("lastPriceUpdate", Value.fromBigInt(value));
+  }
+
   get positions(): MarketPositionLoader {
     return new MarketPositionLoader(
       "Market",
@@ -1076,117 +1027,12 @@ export class Market extends Entity {
     );
   }
 
-  get priceHistory(): PricePointLoader {
-    return new PricePointLoader(
+  get tokenPositions(): TokenPositionLoader {
+    return new TokenPositionLoader(
       "Market",
       this.get("id")!.toString(),
-      "priceHistory",
+      "tokenPositions",
     );
-  }
-}
-
-export class PricePoint extends Entity {
-  constructor(id: string) {
-    super();
-    this.set("id", Value.fromString(id));
-  }
-
-  save(): void {
-    let id = this.get("id");
-    assert(id != null, "Cannot save PricePoint entity without an ID");
-    if (id) {
-      assert(
-        id.kind == ValueKind.STRING,
-        `Entities of type PricePoint must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`,
-      );
-      store.set("PricePoint", id.toString(), this);
-    }
-  }
-
-  static loadInBlock(id: string): PricePoint | null {
-    return changetype<PricePoint | null>(store.get_in_block("PricePoint", id));
-  }
-
-  static load(id: string): PricePoint | null {
-    return changetype<PricePoint | null>(store.get("PricePoint", id));
-  }
-
-  get id(): string {
-    let value = this.get("id");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toString();
-    }
-  }
-
-  set id(value: string) {
-    this.set("id", Value.fromString(value));
-  }
-
-  get market(): string {
-    let value = this.get("market");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toString();
-    }
-  }
-
-  set market(value: string) {
-    this.set("market", Value.fromString(value));
-  }
-
-  get timestamp(): BigInt {
-    let value = this.get("timestamp");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toBigInt();
-    }
-  }
-
-  set timestamp(value: BigInt) {
-    this.set("timestamp", Value.fromBigInt(value));
-  }
-
-  get price(): BigDecimal {
-    let value = this.get("price");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toBigDecimal();
-    }
-  }
-
-  set price(value: BigDecimal) {
-    this.set("price", Value.fromBigDecimal(value));
-  }
-
-  get volume(): BigInt {
-    let value = this.get("volume");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toBigInt();
-    }
-  }
-
-  set volume(value: BigInt) {
-    this.set("volume", Value.fromBigInt(value));
-  }
-
-  get scaledVolume(): BigDecimal {
-    let value = this.get("scaledVolume");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toBigDecimal();
-    }
-  }
-
-  set scaledVolume(value: BigDecimal) {
-    this.set("scaledVolume", Value.fromBigDecimal(value));
   }
 }
 
@@ -1361,19 +1207,6 @@ export class MarketPosition extends Entity {
     this.set("realizedPnl", Value.fromBigInt(value));
   }
 
-  get scaledRealizedPnl(): BigDecimal {
-    let value = this.get("scaledRealizedPnl");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toBigDecimal();
-    }
-  }
-
-  set scaledRealizedPnl(value: BigDecimal) {
-    this.set("scaledRealizedPnl", Value.fromBigDecimal(value));
-  }
-
   get unrealizedPnl(): BigInt {
     let value = this.get("unrealizedPnl");
     if (!value || value.kind == ValueKind.NULL) {
@@ -1385,19 +1218,6 @@ export class MarketPosition extends Entity {
 
   set unrealizedPnl(value: BigInt) {
     this.set("unrealizedPnl", Value.fromBigInt(value));
-  }
-
-  get scaledUnrealizedPnl(): BigDecimal {
-    let value = this.get("scaledUnrealizedPnl");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toBigDecimal();
-    }
-  }
-
-  set scaledUnrealizedPnl(value: BigDecimal) {
-    this.set("scaledUnrealizedPnl", Value.fromBigDecimal(value));
   }
 
   get firstTradeTimestamp(): BigInt {
@@ -1506,9 +1326,234 @@ export class MarketProfit extends Entity {
   set profit(value: BigInt) {
     this.set("profit", Value.fromBigInt(value));
   }
+}
 
-  get scaledProfit(): BigDecimal {
-    let value = this.get("scaledProfit");
+export class TokenPosition extends Entity {
+  constructor(id: string) {
+    super();
+    this.set("id", Value.fromString(id));
+  }
+
+  save(): void {
+    let id = this.get("id");
+    assert(id != null, "Cannot save TokenPosition entity without an ID");
+    if (id) {
+      assert(
+        id.kind == ValueKind.STRING,
+        `Entities of type TokenPosition must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`,
+      );
+      store.set("TokenPosition", id.toString(), this);
+    }
+  }
+
+  static loadInBlock(id: string): TokenPosition | null {
+    return changetype<TokenPosition | null>(
+      store.get_in_block("TokenPosition", id),
+    );
+  }
+
+  static load(id: string): TokenPosition | null {
+    return changetype<TokenPosition | null>(store.get("TokenPosition", id));
+  }
+
+  get id(): string {
+    let value = this.get("id");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toString();
+    }
+  }
+
+  set id(value: string) {
+    this.set("id", Value.fromString(value));
+  }
+
+  get user(): string {
+    let value = this.get("user");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toString();
+    }
+  }
+
+  set user(value: string) {
+    this.set("user", Value.fromString(value));
+  }
+
+  get market(): string {
+    let value = this.get("market");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toString();
+    }
+  }
+
+  set market(value: string) {
+    this.set("market", Value.fromString(value));
+  }
+
+  get tokenId(): BigInt {
+    let value = this.get("tokenId");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set tokenId(value: BigInt) {
+    this.set("tokenId", Value.fromBigInt(value));
+  }
+
+  get amount(): BigInt {
+    let value = this.get("amount");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set amount(value: BigInt) {
+    this.set("amount", Value.fromBigInt(value));
+  }
+
+  get avgPrice(): BigInt {
+    let value = this.get("avgPrice");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set avgPrice(value: BigInt) {
+    this.set("avgPrice", Value.fromBigInt(value));
+  }
+
+  get realizedPnl(): BigInt {
+    let value = this.get("realizedPnl");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set realizedPnl(value: BigInt) {
+    this.set("realizedPnl", Value.fromBigInt(value));
+  }
+
+  get totalBought(): BigInt {
+    let value = this.get("totalBought");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set totalBought(value: BigInt) {
+    this.set("totalBought", Value.fromBigInt(value));
+  }
+}
+
+export class UserStats extends Entity {
+  constructor(id: string) {
+    super();
+    this.set("id", Value.fromString(id));
+  }
+
+  save(): void {
+    let id = this.get("id");
+    assert(id != null, "Cannot save UserStats entity without an ID");
+    if (id) {
+      assert(
+        id.kind == ValueKind.STRING,
+        `Entities of type UserStats must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`,
+      );
+      store.set("UserStats", id.toString(), this);
+    }
+  }
+
+  static loadInBlock(id: string): UserStats | null {
+    return changetype<UserStats | null>(store.get_in_block("UserStats", id));
+  }
+
+  static load(id: string): UserStats | null {
+    return changetype<UserStats | null>(store.get("UserStats", id));
+  }
+
+  get id(): string {
+    let value = this.get("id");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toString();
+    }
+  }
+
+  set id(value: string) {
+    this.set("id", Value.fromString(value));
+  }
+
+  get user(): string {
+    let value = this.get("user");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toString();
+    }
+  }
+
+  set user(value: string) {
+    this.set("user", Value.fromString(value));
+  }
+
+  get totalVolume(): BigInt {
+    let value = this.get("totalVolume");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set totalVolume(value: BigInt) {
+    this.set("totalVolume", Value.fromBigInt(value));
+  }
+
+  get totalTrades(): BigInt {
+    let value = this.get("totalTrades");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set totalTrades(value: BigInt) {
+    this.set("totalTrades", Value.fromBigInt(value));
+  }
+
+  get totalPnl(): BigInt {
+    let value = this.get("totalPnl");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set totalPnl(value: BigInt) {
+    this.set("totalPnl", Value.fromBigInt(value));
+  }
+
+  get winRate(): BigDecimal {
+    let value = this.get("winRate");
     if (!value || value.kind == ValueKind.NULL) {
       throw new Error("Cannot return null for a required field.");
     } else {
@@ -1516,8 +1561,187 @@ export class MarketProfit extends Entity {
     }
   }
 
-  set scaledProfit(value: BigDecimal) {
-    this.set("scaledProfit", Value.fromBigDecimal(value));
+  set winRate(value: BigDecimal) {
+    this.set("winRate", Value.fromBigDecimal(value));
+  }
+}
+
+export class SimpleUserPosition extends Entity {
+  constructor(id: string) {
+    super();
+    this.set("id", Value.fromString(id));
+  }
+
+  save(): void {
+    let id = this.get("id");
+    assert(id != null, "Cannot save SimpleUserPosition entity without an ID");
+    if (id) {
+      assert(
+        id.kind == ValueKind.STRING,
+        `Entities of type SimpleUserPosition must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`,
+      );
+      store.set("SimpleUserPosition", id.toString(), this);
+    }
+  }
+
+  static loadInBlock(id: string): SimpleUserPosition | null {
+    return changetype<SimpleUserPosition | null>(
+      store.get_in_block("SimpleUserPosition", id),
+    );
+  }
+
+  static load(id: string): SimpleUserPosition | null {
+    return changetype<SimpleUserPosition | null>(
+      store.get("SimpleUserPosition", id),
+    );
+  }
+
+  get id(): string {
+    let value = this.get("id");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toString();
+    }
+  }
+
+  set id(value: string) {
+    this.set("id", Value.fromString(value));
+  }
+
+  get user(): string {
+    let value = this.get("user");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toString();
+    }
+  }
+
+  set user(value: string) {
+    this.set("user", Value.fromString(value));
+  }
+
+  get market(): string {
+    let value = this.get("market");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toString();
+    }
+  }
+
+  set market(value: string) {
+    this.set("market", Value.fromString(value));
+  }
+
+  get position(): BigInt {
+    let value = this.get("position");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set position(value: BigInt) {
+    this.set("position", Value.fromBigInt(value));
+  }
+
+  get pnl(): BigInt {
+    let value = this.get("pnl");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set pnl(value: BigInt) {
+    this.set("pnl", Value.fromBigInt(value));
+  }
+}
+
+export class SimpleMarketData extends Entity {
+  constructor(id: string) {
+    super();
+    this.set("id", Value.fromString(id));
+  }
+
+  save(): void {
+    let id = this.get("id");
+    assert(id != null, "Cannot save SimpleMarketData entity without an ID");
+    if (id) {
+      assert(
+        id.kind == ValueKind.STRING,
+        `Entities of type SimpleMarketData must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`,
+      );
+      store.set("SimpleMarketData", id.toString(), this);
+    }
+  }
+
+  static loadInBlock(id: string): SimpleMarketData | null {
+    return changetype<SimpleMarketData | null>(
+      store.get_in_block("SimpleMarketData", id),
+    );
+  }
+
+  static load(id: string): SimpleMarketData | null {
+    return changetype<SimpleMarketData | null>(
+      store.get("SimpleMarketData", id),
+    );
+  }
+
+  get id(): string {
+    let value = this.get("id");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toString();
+    }
+  }
+
+  set id(value: string) {
+    this.set("id", Value.fromString(value));
+  }
+
+  get volume(): BigInt {
+    let value = this.get("volume");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigInt();
+    }
+  }
+
+  set volume(value: BigInt) {
+    this.set("volume", Value.fromBigInt(value));
+  }
+
+  get price(): BigDecimal {
+    let value = this.get("price");
+    if (!value || value.kind == ValueKind.NULL) {
+      throw new Error("Cannot return null for a required field.");
+    } else {
+      return value.toBigDecimal();
+    }
+  }
+
+  set price(value: BigDecimal) {
+    this.set("price", Value.fromBigDecimal(value));
+  }
+
+  get participants(): i32 {
+    let value = this.get("participants");
+    if (!value || value.kind == ValueKind.NULL) {
+      return 0;
+    } else {
+      return value.toI32();
+    }
+  }
+
+  set participants(value: i32) {
+    this.set("participants", Value.fromI32(value));
   }
 }
 
@@ -1691,45 +1915,6 @@ export class Transaction extends Entity {
   set price(value: BigDecimal) {
     this.set("price", Value.fromBigDecimal(value));
   }
-
-  get scaledPrice(): BigDecimal {
-    let value = this.get("scaledPrice");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toBigDecimal();
-    }
-  }
-
-  set scaledPrice(value: BigDecimal) {
-    this.set("scaledPrice", Value.fromBigDecimal(value));
-  }
-
-  get gasUsed(): BigInt {
-    let value = this.get("gasUsed");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toBigInt();
-    }
-  }
-
-  set gasUsed(value: BigInt) {
-    this.set("gasUsed", Value.fromBigInt(value));
-  }
-
-  get gasPrice(): BigInt {
-    let value = this.get("gasPrice");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toBigInt();
-    }
-  }
-
-  set gasPrice(value: BigInt) {
-    this.set("gasPrice", Value.fromBigInt(value));
-  }
 }
 
 export class Orderbook extends Entity {
@@ -1823,19 +2008,6 @@ export class Orderbook extends Entity {
     this.set("collateralVolume", Value.fromBigInt(value));
   }
 
-  get scaledCollateralVolume(): BigDecimal {
-    let value = this.get("scaledCollateralVolume");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toBigDecimal();
-    }
-  }
-
-  set scaledCollateralVolume(value: BigDecimal) {
-    this.set("scaledCollateralVolume", Value.fromBigDecimal(value));
-  }
-
   get collateralBuyVolume(): BigInt {
     let value = this.get("collateralBuyVolume");
     if (!value || value.kind == ValueKind.NULL) {
@@ -1847,19 +2019,6 @@ export class Orderbook extends Entity {
 
   set collateralBuyVolume(value: BigInt) {
     this.set("collateralBuyVolume", Value.fromBigInt(value));
-  }
-
-  get scaledCollateralBuyVolume(): BigDecimal {
-    let value = this.get("scaledCollateralBuyVolume");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toBigDecimal();
-    }
-  }
-
-  set scaledCollateralBuyVolume(value: BigDecimal) {
-    this.set("scaledCollateralBuyVolume", Value.fromBigDecimal(value));
   }
 
   get collateralSellVolume(): BigInt {
@@ -1875,19 +2034,6 @@ export class Orderbook extends Entity {
     this.set("collateralSellVolume", Value.fromBigInt(value));
   }
 
-  get scaledCollateralSellVolume(): BigDecimal {
-    let value = this.get("scaledCollateralSellVolume");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toBigDecimal();
-    }
-  }
-
-  set scaledCollateralSellVolume(value: BigDecimal) {
-    this.set("scaledCollateralSellVolume", Value.fromBigDecimal(value));
-  }
-
   get totalFees(): BigInt {
     let value = this.get("totalFees");
     if (!value || value.kind == ValueKind.NULL) {
@@ -1899,45 +2045,6 @@ export class Orderbook extends Entity {
 
   set totalFees(value: BigInt) {
     this.set("totalFees", Value.fromBigInt(value));
-  }
-
-  get scaledTotalFees(): BigDecimal {
-    let value = this.get("scaledTotalFees");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toBigDecimal();
-    }
-  }
-
-  set scaledTotalFees(value: BigDecimal) {
-    this.set("scaledTotalFees", Value.fromBigDecimal(value));
-  }
-
-  get averageTradeSize(): BigDecimal {
-    let value = this.get("averageTradeSize");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toBigDecimal();
-    }
-  }
-
-  set averageTradeSize(value: BigDecimal) {
-    this.set("averageTradeSize", Value.fromBigDecimal(value));
-  }
-
-  get lastActiveDay(): BigInt {
-    let value = this.get("lastActiveDay");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toBigInt();
-    }
-  }
-
-  set lastActiveDay(value: BigInt) {
-    this.set("lastActiveDay", Value.fromBigInt(value));
   }
 
   get orders(): OrderFilledEventLoader {
@@ -2846,19 +2953,6 @@ export class DailyStats extends Entity {
     this.set("volume", Value.fromBigInt(value));
   }
 
-  get scaledVolume(): BigDecimal {
-    let value = this.get("scaledVolume");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toBigDecimal();
-    }
-  }
-
-  set scaledVolume(value: BigDecimal) {
-    this.set("scaledVolume", Value.fromBigDecimal(value));
-  }
-
   get fees(): BigInt {
     let value = this.get("fees");
     if (!value || value.kind == ValueKind.NULL) {
@@ -2870,19 +2964,6 @@ export class DailyStats extends Entity {
 
   set fees(value: BigInt) {
     this.set("fees", Value.fromBigInt(value));
-  }
-
-  get scaledFees(): BigDecimal {
-    let value = this.get("scaledFees");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toBigDecimal();
-    }
-  }
-
-  set scaledFees(value: BigDecimal) {
-    this.set("scaledFees", Value.fromBigDecimal(value));
   }
 
   get numActiveMarkets(): i32 {
@@ -2922,165 +3003,6 @@ export class DailyStats extends Entity {
 
   set numResolvedMarkets(value: i32) {
     this.set("numResolvedMarkets", Value.fromI32(value));
-  }
-}
-
-export class HourlyStats extends Entity {
-  constructor(id: string) {
-    super();
-    this.set("id", Value.fromString(id));
-  }
-
-  save(): void {
-    let id = this.get("id");
-    assert(id != null, "Cannot save HourlyStats entity without an ID");
-    if (id) {
-      assert(
-        id.kind == ValueKind.STRING,
-        `Entities of type HourlyStats must have an ID of type String but the id '${id.displayData()}' is of type ${id.displayKind()}`,
-      );
-      store.set("HourlyStats", id.toString(), this);
-    }
-  }
-
-  static loadInBlock(id: string): HourlyStats | null {
-    return changetype<HourlyStats | null>(
-      store.get_in_block("HourlyStats", id),
-    );
-  }
-
-  static load(id: string): HourlyStats | null {
-    return changetype<HourlyStats | null>(store.get("HourlyStats", id));
-  }
-
-  get id(): string {
-    let value = this.get("id");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toString();
-    }
-  }
-
-  set id(value: string) {
-    this.set("id", Value.fromString(value));
-  }
-
-  get date(): string {
-    let value = this.get("date");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toString();
-    }
-  }
-
-  set date(value: string) {
-    this.set("date", Value.fromString(value));
-  }
-
-  get hour(): i32 {
-    let value = this.get("hour");
-    if (!value || value.kind == ValueKind.NULL) {
-      return 0;
-    } else {
-      return value.toI32();
-    }
-  }
-
-  set hour(value: i32) {
-    this.set("hour", Value.fromI32(value));
-  }
-
-  get timestamp(): BigInt {
-    let value = this.get("timestamp");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toBigInt();
-    }
-  }
-
-  set timestamp(value: BigInt) {
-    this.set("timestamp", Value.fromBigInt(value));
-  }
-
-  get numTrades(): BigInt {
-    let value = this.get("numTrades");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toBigInt();
-    }
-  }
-
-  set numTrades(value: BigInt) {
-    this.set("numTrades", Value.fromBigInt(value));
-  }
-
-  get numTraders(): i32 {
-    let value = this.get("numTraders");
-    if (!value || value.kind == ValueKind.NULL) {
-      return 0;
-    } else {
-      return value.toI32();
-    }
-  }
-
-  set numTraders(value: i32) {
-    this.set("numTraders", Value.fromI32(value));
-  }
-
-  get volume(): BigInt {
-    let value = this.get("volume");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toBigInt();
-    }
-  }
-
-  set volume(value: BigInt) {
-    this.set("volume", Value.fromBigInt(value));
-  }
-
-  get scaledVolume(): BigDecimal {
-    let value = this.get("scaledVolume");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toBigDecimal();
-    }
-  }
-
-  set scaledVolume(value: BigDecimal) {
-    this.set("scaledVolume", Value.fromBigDecimal(value));
-  }
-
-  get fees(): BigInt {
-    let value = this.get("fees");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toBigInt();
-    }
-  }
-
-  set fees(value: BigInt) {
-    this.set("fees", Value.fromBigInt(value));
-  }
-
-  get scaledFees(): BigDecimal {
-    let value = this.get("scaledFees");
-    if (!value || value.kind == ValueKind.NULL) {
-      throw new Error("Cannot return null for a required field.");
-    } else {
-      return value.toBigDecimal();
-    }
-  }
-
-  set scaledFees(value: BigDecimal) {
-    this.set("scaledFees", Value.fromBigDecimal(value));
   }
 }
 
@@ -3192,6 +3114,42 @@ export class MarketProfitLoader extends Entity {
   }
 }
 
+export class TokenPositionLoader extends Entity {
+  _entity: string;
+  _field: string;
+  _id: string;
+
+  constructor(entity: string, id: string, field: string) {
+    super();
+    this._entity = entity;
+    this._id = id;
+    this._field = field;
+  }
+
+  load(): TokenPosition[] {
+    let value = store.loadRelated(this._entity, this._id, this._field);
+    return changetype<TokenPosition[]>(value);
+  }
+}
+
+export class UserStatsLoader extends Entity {
+  _entity: string;
+  _field: string;
+  _id: string;
+
+  constructor(entity: string, id: string, field: string) {
+    super();
+    this._entity = entity;
+    this._id = id;
+    this._field = field;
+  }
+
+  load(): UserStats[] {
+    let value = store.loadRelated(this._entity, this._id, this._field);
+    return changetype<UserStats[]>(value);
+  }
+}
+
 export class MarketLoader extends Entity {
   _entity: string;
   _field: string;
@@ -3207,24 +3165,6 @@ export class MarketLoader extends Entity {
   load(): Market[] {
     let value = store.loadRelated(this._entity, this._id, this._field);
     return changetype<Market[]>(value);
-  }
-}
-
-export class PricePointLoader extends Entity {
-  _entity: string;
-  _field: string;
-  _id: string;
-
-  constructor(entity: string, id: string, field: string) {
-    super();
-    this._entity = entity;
-    this._id = id;
-    this._field = field;
-  }
-
-  load(): PricePoint[] {
-    let value = store.loadRelated(this._entity, this._id, this._field);
-    return changetype<PricePoint[]>(value);
   }
 }
 

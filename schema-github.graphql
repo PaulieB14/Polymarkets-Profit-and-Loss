@@ -1,6 +1,6 @@
-# Slimmed Polymarket Subgraph Schema - Performance Optimized
-# Removed bloat while keeping core analytical value
-# Based on Goldsky patterns but more comprehensive
+# Enhanced Polymarket Subgraph Schema
+# Optimized for performance following Graph Protocol best practices
+# Avoids large arrays and uses @derivedFrom relationships
 
 # =============================================================================
 # CORE ENTITIES
@@ -26,11 +26,17 @@ type Global @entity(immutable: false) {
   buysQuantity: BigInt!
   sellsQuantity: BigInt!
   
-  # Volume Statistics (raw values only - no scaled bloat)
+  # Volume Statistics (both raw and scaled)
   collateralVolume: BigInt!
+  scaledCollateralVolume: BigDecimal!
   collateralBuyVolume: BigInt!
+  scaledCollateralBuyVolume: BigDecimal!
   collateralSellVolume: BigInt!
+  scaledCollateralSellVolume: BigDecimal!
+  
+  # Fee Statistics
   collateralFees: BigInt!
+  scaledCollateralFees: BigDecimal!
   
   # Timestamps
   lastUpdated: BigInt!
@@ -46,19 +52,16 @@ type Account @entity(immutable: false) {
   lastTradedTimestamp: BigInt!
   isActive: Boolean!
   
-  # Trading statistics (raw values only)
+  # Trading statistics
   numTrades: BigInt!
   collateralVolume: BigInt!
+  scaledCollateralVolume: BigDecimal!
   
-  # P&L tracking (raw values only)
+  # P&L tracking
   totalRealizedPnl: BigInt!
-  totalUnrealizedPnl: BigInt!
+  scaledTotalRealizedPnl: BigDecimal!
   totalFeesPaid: BigInt!
-  
-  # Advanced P&L metrics
-  winRate: BigDecimal!
-  profitFactor: BigDecimal!
-  maxDrawdown: BigInt!
+  scaledTotalFeesPaid: BigDecimal!
   
   # Relationships using @derivedFrom (no large arrays)
   positions: [MarketPosition!] @derivedFrom(field: "user")
@@ -67,8 +70,6 @@ type Account @entity(immutable: false) {
   merges: [Merge!] @derivedFrom(field: "stakeholder")
   redemptions: [Redemption!] @derivedFrom(field: "redeemer")
   marketProfits: [MarketProfit!] @derivedFrom(field: "user")
-  tokenPositions: [TokenPosition!] @derivedFrom(field: "user")
-  userStats: UserStats @derivedFrom(field: "user")
 }
 
 type Collateral @entity(immutable: false) {
@@ -78,9 +79,10 @@ type Collateral @entity(immutable: false) {
   symbol: String!
   decimals: Int!
   
-  # Usage statistics (raw values only)
+  # Usage statistics
   numMarkets: Int!
   totalVolume: BigInt!
+  scaledTotalVolume: BigDecimal!
   
   # Relationships using @derivedFrom
   splits: [Split!] @derivedFrom(field: "collateralToken")
@@ -111,9 +113,10 @@ type Condition @entity(immutable: false) {
   redemptions: [Redemption!] @derivedFrom(field: "condition")
   marketProfits: [MarketProfit!] @derivedFrom(field: "condition")
   
-  # Statistics (raw values only)
+  # Statistics
   numMarkets: Int!
   totalVolume: BigInt!
+  scaledTotalVolume: BigDecimal!
 }
 
 type Market @entity(immutable: false) {
@@ -127,20 +130,31 @@ type Market @entity(immutable: false) {
   isResolved: Boolean!
   resolutionTimestamp: BigInt
   
-  # Trading data (raw values only)
+  # Trading data
   totalVolume: BigInt!
+  scaledTotalVolume: BigDecimal!
   numTrades: BigInt!
   numBuyers: Int!
   numSellers: Int!
   
-  # Price data (simplified - no PricePoint bloat)
+  # Price data
   currentPrice: BigDecimal
-  lastPriceUpdate: BigInt!
+  lastPricePointTime: BigInt
   
   # Relationships using @derivedFrom (no large arrays)
   positions: [MarketPosition!] @derivedFrom(field: "market")
   transactions: [Transaction!] @derivedFrom(field: "market")
-  tokenPositions: [TokenPosition!] @derivedFrom(field: "market")
+  priceHistory: [PricePoint!] @derivedFrom(field: "market")
+}
+
+type PricePoint @entity(immutable: true) {
+  "Timestamp + Market ID"
+  id: ID!
+  market: Market!
+  timestamp: BigInt!
+  price: BigDecimal!
+  volume: BigInt!
+  scaledVolume: BigDecimal!
 }
 
 # =============================================================================
@@ -153,18 +167,22 @@ type MarketPosition @entity(immutable: false) {
   user: Account!
   market: Market!
   
-  # Position data (raw values only)
+  # Position data
   quantityBought: BigInt!
   quantitySold: BigInt!
   netQuantity: BigInt!
+  
+  # Value tracking
   valueBought: BigInt!
   valueSold: BigInt!
   netValue: BigInt!
   feesPaid: BigInt!
   
-  # P&L tracking (raw values only)
+  # P&L tracking
   realizedPnl: BigInt!
+  scaledRealizedPnl: BigDecimal!
   unrealizedPnl: BigInt!
+  scaledUnrealizedPnl: BigDecimal!
   
   # Timestamps
   firstTradeTimestamp: BigInt!
@@ -177,53 +195,11 @@ type MarketProfit @entity(immutable: false) {
   user: Account!
   condition: Condition!
   profit: BigInt!
+  scaledProfit: BigDecimal!
 }
 
 # =============================================================================
-# GOLDSKY-INSPIRED ENTITIES (SIMPLIFIED)
-# =============================================================================
-
-type TokenPosition @entity(immutable: true) {
-  "User Address + Token ID"
-  id: ID!
-  user: Account!
-  market: Market!
-  tokenId: BigInt!
-  amount: BigInt!
-  avgPrice: BigInt!
-  realizedPnl: BigInt!
-  totalBought: BigInt!
-}
-
-type UserStats @entity(immutable: true) {
-  "User Address"
-  id: ID!
-  user: Account!
-  totalVolume: BigInt!
-  totalTrades: BigInt!
-  totalPnl: BigInt!
-  winRate: BigDecimal!
-}
-
-type SimpleUserPosition @entity(immutable: true) {
-  "User + Market simplified"
-  id: ID!
-  user: String!
-  market: String!
-  position: BigInt!
-  pnl: BigInt!
-}
-
-type SimpleMarketData @entity(immutable: true) {
-  "Market ID"
-  id: ID!
-  volume: BigInt!
-  price: BigDecimal!
-  participants: Int!
-}
-
-# =============================================================================
-# TRADING DATA (SIMPLIFIED - NO GAS BLOAT)
+# TRADING DATA
 # =============================================================================
 
 enum TradeType {
@@ -242,30 +218,49 @@ type Transaction @entity(immutable: true) {
   user: Account!
   market: Market!
   
-  # Trade details (core only - no gas/scaled bloat)
+  # Trade details
   tradeAmount: BigInt!
   feeAmount: BigInt!
   outcomeTokensAmount: BigInt!
   outcomeIndex: BigInt!
+  
+  # Price data
   price: BigDecimal!
+  scaledPrice: BigDecimal!
+  
+  # Gas data
+  gasUsed: BigInt!
+  gasPrice: BigInt!
 }
 
 # =============================================================================
-# ORDERBOOK DATA (SIMPLIFIED - NO ANALYTICS BLOAT)
+# ORDERBOOK DATA
 # =============================================================================
 
 type Orderbook @entity(immutable: false) {
   "Token ID"
   id: ID!
   
-  # Core trading statistics only (no analytics bloat)
+  # Trading statistics
   tradesQuantity: BigInt!
   buysQuantity: BigInt!
   sellsQuantity: BigInt!
+  
+  # Volume data
   collateralVolume: BigInt!
+  scaledCollateralVolume: BigDecimal!
   collateralBuyVolume: BigInt!
+  scaledCollateralBuyVolume: BigDecimal!
   collateralSellVolume: BigInt!
+  scaledCollateralSellVolume: BigDecimal!
+  
+  # Fee data
   totalFees: BigInt!
+  scaledTotalFees: BigDecimal!
+  
+  # Analytics
+  averageTradeSize: BigDecimal!
+  lastActiveDay: BigInt!
   
   # Relationships using @derivedFrom (no large arrays)
   orders: [OrderFilledEvent!] @derivedFrom(field: "orderbook")
@@ -364,7 +359,7 @@ type Redemption @entity(immutable: true) {
 }
 
 # =============================================================================
-# ANALYTICS (DAILY ONLY - NO HOURLY BLOAT)
+# ENHANCED ANALYTICS
 # =============================================================================
 
 type DailyStats @entity(immutable: false) {
@@ -373,14 +368,32 @@ type DailyStats @entity(immutable: false) {
   date: String!
   timestamp: BigInt!
   
-  # Trading stats (raw values only)
+  # Trading stats
   numTrades: BigInt!
   numTraders: Int!
   volume: BigInt!
+  scaledVolume: BigDecimal!
   fees: BigInt!
+  scaledFees: BigDecimal!
   
   # Market stats
   numActiveMarkets: Int!
   numNewMarkets: Int!
   numResolvedMarkets: Int!
+}
+
+type HourlyStats @entity(immutable: false) {
+  "YYYY-MM-DD-HH format"
+  id: ID!
+  date: String!
+  hour: Int!
+  timestamp: BigInt!
+  
+  # Trading stats
+  numTrades: BigInt!
+  numTraders: Int!
+  volume: BigInt!
+  scaledVolume: BigDecimal!
+  fees: BigInt!
+  scaledFees: BigDecimal!
 }
