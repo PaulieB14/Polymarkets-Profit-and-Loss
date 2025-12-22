@@ -235,6 +235,7 @@ function getOrCreateMarket(marketId: string, condition: Condition, outcomeIndex:
     market.numBuyers = 0
     market.numSellers = 0
     market.currentPrice = null
+    market.lastPriceUpdate = ZERO_BI
     market.save()
   }
   return market as Market
@@ -542,6 +543,7 @@ export function handleOrderFilled(event: OrderFilled): void {
   market.totalVolume = market.totalVolume.plus(event.params.makerAmountFilled)
   market.numTrades = market.numTrades.plus(ONE_BI)
   market.currentPrice = price
+  market.lastPriceUpdate = event.block.timestamp
   market.save()
   
   // Create price point for historical tracking
