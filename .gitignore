@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+yarn-error.log
+npm-debug.log*
+
+# Build outputs
+build/
+generated/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Backup files
+*-backup.*
+*-backup/
+*.backup
+*-old.*
+*-temp.*
+
+# Log files
+*.log
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Temporary files
+*.tmp
+*.temp
+monitor_progress.sh
+pnl_functions.ts
