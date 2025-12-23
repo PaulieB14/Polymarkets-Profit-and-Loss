@@ -69,38 +69,41 @@ function updateUserPnL(account: Account, tokenId: BigInt, amount: BigInt, price:
     tokenPosition.totalBought = ZERO_BI
   }
   
+  // Convert price to USDC units (6 decimals) - Goldsky approach
+  let priceInUsdc = BigInt.fromString(price.times(BigDecimal.fromString("1000000")).toString().split('.')[0])
+  
   if (isSell) {
-    // SELL: Calculate realized P&L
+    // SELL: Calculate realized P&L (Goldsky approach)
     if (tokenPosition.amount.gt(ZERO_BI)) {
       let sellAmount = amount.gt(tokenPosition.amount) ? tokenPosition.amount : amount
       
-      // Calculate cost basis and sale value in USDC terms
-      let avgPriceDecimal = tokenPosition.avgPrice.toBigDecimal().div(BigDecimal.fromString("1000000"))
-      let costBasisDecimal = avgPriceDecimal.times(sellAmount.toBigDecimal())
-      let saleValueDecimal = price.times(sellAmount.toBigDecimal())
-      let realizedPnlDecimal = saleValueDecimal.minus(costBasisDecimal)
+      // Cost basis = avgPrice * sellAmount / 1e6 (to handle USDC precision)
+      let costBasis = tokenPosition.avgPrice.times(sellAmount).div(BigInt.fromI32(1000000))
       
-      // Convert to BigInt for storage (multiply by 10^6 for USDC precision)
-      let realizedPnlBigInt = BigInt.fromString(realizedPnlDecimal.times(BigDecimal.fromString("1000000")).toString().split('.')[0])
+      // Sale value = currentPrice * sellAmount / 1e6 (to handle USDC precision)
+      let saleValue = priceInUsdc.times(sellAmount).div(BigInt.fromI32(1000000))
+      
+      // Realized P&L = sale value - cost basis
+      let realizedPnl = saleValue.minus(costBasis)
       
       // Update TokenPosition
-      tokenPosition.realizedPnl = tokenPosition.realizedPnl.plus(realizedPnlBigInt)
+      tokenPosition.realizedPnl = tokenPosition.realizedPnl.plus(realizedPnl)
       tokenPosition.amount = tokenPosition.amount.minus(sellAmount)
       
       // Update Account P&L
-      account.totalRealizedPnl = account.totalRealizedPnl.plus(realizedPnlBigInt)
+      account.totalRealizedPnl = account.totalRealizedPnl.plus(realizedPnl)
     }
   } else {
-    // BUY: Update average price and position
+    // BUY: Update average price and position (Goldsky approach)
     let newTotalAmount = tokenPosition.amount.plus(amount)
-    let currentValueDecimal = tokenPosition.avgPrice.toBigDecimal().div(BigDecimal.fromString("1000000")).times(tokenPosition.amount.toBigDecimal())
-    let newValueDecimal = price.times(amount.toBigDecimal())
-    let totalValueDecimal = currentValueDecimal.plus(newValueDecimal)
+    
+    // Calculate weighted average price using BigInt arithmetic
+    let currentValue = tokenPosition.avgPrice.times(tokenPosition.amount)
+    let newValue = priceInUsdc.times(amount)
+    let totalValue = currentValue.plus(newValue)
     
     if (newTotalAmount.gt(ZERO_BI)) {
-      let avgPriceDecimal = totalValueDecimal.div(newTotalAmount.toBigDecimal())
-      // Convert to BigInt (multiply by 10^6 for USDC precision)
-      tokenPosition.avgPrice = BigInt.fromString(avgPriceDecimal.times(BigDecimal.fromString("1000000")).toString().split('.')[0])
+      tokenPosition.avgPrice = totalValue.div(newTotalAmount)
     }
     
     tokenPosition.amount = newTotalAmount
@@ -587,8 +590,13 @@ export function handleOrderFilled(event: OrderFilled): void {
   makerAccount.lastSeenTimestamp = event.block.timestamp
   makerAccount.isActive = true
   
-  // Update P&L for maker (Goldsky-style)
-  updateUserPnL(makerAccount, event.params.makerAssetId, event.params.makerAmountFilled, price, side == "Sell", market)
+  // Update P&L for maker - GOLDSKY APPROACH
+  // Only track P&L for outcome tokens (non-zero token IDs), not USDC collateral
+  if (event.params.makerAssetId.gt(ZERO_BI)) {
+    // Maker is trading outcome tokens
+    let makerIsSelling = event.params.makerAssetId.gt(event.params.takerAssetId)
+    updateUserPnL(makerAccount, event.params.makerAssetId, event.params.makerAmountFilled, price, makerIsSelling, market)
+  }
   makerAccount.save()
   
   // Update taker account with P&L calculations
@@ -599,9 +607,13 @@ export function handleOrderFilled(event: OrderFilled): void {
   takerAccount.lastSeenTimestamp = event.block.timestamp
   takerAccount.isActive = true
   
-  // Update P&L for taker (opposite side) - fix the logic here
-  let takerIsSell = side == "Sell" ? false : true  // Taker does opposite of maker
-  updateUserPnL(takerAccount, event.params.takerAssetId, event.params.takerAmountFilled, price, takerIsSell, market)
+  // Update P&L for taker - GOLDSKY APPROACH
+  // Only track P&L for outcome tokens (non-zero token IDs), not USDC collateral
+  if (event.params.takerAssetId.gt(ZERO_BI)) {
+    // Taker is trading outcome tokens
+    let takerIsSelling = event.params.takerAssetId.gt(event.params.makerAssetId)
+    updateUserPnL(takerAccount, event.params.takerAssetId, event.params.takerAmountFilled, price, takerIsSelling, market)
+  }
   takerAccount.save()
   
   // Update market statistics
