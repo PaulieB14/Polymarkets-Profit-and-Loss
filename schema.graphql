@@ -183,7 +183,7 @@ type MarketProfit @entity(immutable: false) {
 # GOLDSKY-INSPIRED ENTITIES (SIMPLIFIED)
 # =============================================================================
 
-type TokenPosition @entity(immutable: true) {
+type TokenPosition @entity(immutable: false) {
   "User Address + Token ID"
   id: ID!
   user: Account!
@@ -195,7 +195,7 @@ type TokenPosition @entity(immutable: true) {
   totalBought: BigInt!
 }
 
-type UserStats @entity(immutable: true) {
+type UserStats @entity(immutable: false) {
   "User Address"
   id: ID!
   user: Account!
