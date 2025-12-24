@@ -127,24 +127,61 @@ function updateUnrealizedPnL(account: Account): void {
 }
 
 function updateAccountAnalytics(account: Account): void {
-  // Calculate win rate, profit factor, max drawdown
-  // This is simplified - full implementation would track trade history
+  // Calculate real win rate and profit factor from TokenPosition data
   
   if (account.numTrades.gt(ZERO_BI)) {
-    // Simplified win rate calculation
-    if (account.totalRealizedPnl.gt(ZERO_BI)) {
-      account.winRate = BigDecimal.fromString("0.6") // Placeholder
+    // Calculate win rate from TokenPositions
+    let winningPositions = 0
+    let totalPositions = 0
+    let totalProfits = ZERO_BI
+    let totalLosses = ZERO_BI
+    
+    // Load all token positions for this account
+    let tokenPositions = account.tokenPositions.load()
+    
+    for (let i = 0; i < tokenPositions.length; i++) {
+      let position = tokenPositions[i]
+      
+      // Only count positions that have been traded (totalBought > 0)
+      if (position.totalBought.gt(ZERO_BI)) {
+        totalPositions++
+        
+        if (position.realizedPnl.gt(ZERO_BI)) {
+          winningPositions++
+          totalProfits = totalProfits.plus(position.realizedPnl)
+        } else if (position.realizedPnl.lt(ZERO_BI)) {
+          totalLosses = totalLosses.plus(position.realizedPnl.abs())
+        }
+      }
+    }
+    
+    // Calculate win rate
+    if (totalPositions > 0) {
+      account.winRate = BigDecimal.fromString(winningPositions.toString()).div(BigDecimal.fromString(totalPositions.toString()))
     } else {
-      account.winRate = BigDecimal.fromString("0.4") // Placeholder
+      account.winRate = ZERO_BD
     }
     
-    // Simplified profit factor
-    account.profitFactor = BigDecimal.fromString("1.2") // Placeholder
-    
-    // Max drawdown (simplified)
-    if (account.totalRealizedPnl.lt(account.maxDrawdown)) {
-      account.maxDrawdown = account.totalRealizedPnl
+    // Calculate profit factor (total profits / total losses)
+    if (totalLosses.gt(ZERO_BI)) {
+      let profitsDecimal = totalProfits.toBigDecimal().div(BigDecimal.fromString("1000000000000")) // Convert from 12 decimal precision
+      let lossesDecimal = totalLosses.toBigDecimal().div(BigDecimal.fromString("1000000000000"))
+      account.profitFactor = profitsDecimal.div(lossesDecimal)
+    } else if (totalProfits.gt(ZERO_BI)) {
+      account.profitFactor = BigDecimal.fromString("999") // Very high profit factor (no losses)
+    } else {
+      account.profitFactor = ZERO_BD
     }
+    
+    // Max drawdown - use the largest single loss as approximation
+    let maxSingleLoss = ZERO_BI
+    for (let i = 0; i < tokenPositions.length; i++) {
+      let position = tokenPositions[i]
+      if (position.realizedPnl.lt(ZERO_BI) && position.realizedPnl.abs().gt(maxSingleLoss)) {
+        maxSingleLoss = position.realizedPnl.abs()
+      }
+    }
+    account.maxDrawdown = maxSingleLoss.neg()
   }
 }
 const USDC_DECIMALS = 6
@@ -590,12 +627,15 @@ export function handleOrderFilled(event: OrderFilled): void {
   makerAccount.lastSeenTimestamp = event.block.timestamp
   makerAccount.isActive = true
   
-  // Update P&L for maker - GOLDSKY APPROACH
-  // Only track P&L for outcome tokens (non-zero token IDs), not USDC collateral
+  // Update P&L for maker - FIXED LOGIC
+  // Track P&L for whoever is trading outcome tokens (non-zero asset IDs)
   if (event.params.makerAssetId.gt(ZERO_BI)) {
     // Maker is trading outcome tokens
     let makerIsSelling = event.params.makerAssetId.gt(event.params.takerAssetId)
     updateUserPnL(makerAccount, event.params.makerAssetId, event.params.makerAmountFilled, price, makerIsSelling, market)
+  } else if (event.params.takerAssetId.gt(ZERO_BI)) {
+    // Maker is trading USDC for outcome tokens (buying outcome tokens)
+    updateUserPnL(makerAccount, event.params.takerAssetId, event.params.takerAmountFilled, price, false, market)
   }
   makerAccount.save()
   
@@ -607,12 +647,15 @@ export function handleOrderFilled(event: OrderFilled): void {
   takerAccount.lastSeenTimestamp = event.block.timestamp
   takerAccount.isActive = true
   
-  // Update P&L for taker - GOLDSKY APPROACH
-  // Only track P&L for outcome tokens (non-zero token IDs), not USDC collateral
+  // Update P&L for taker - FIXED LOGIC
+  // Track P&L for whoever is trading outcome tokens (non-zero asset IDs)
   if (event.params.takerAssetId.gt(ZERO_BI)) {
     // Taker is trading outcome tokens
     let takerIsSelling = event.params.takerAssetId.gt(event.params.makerAssetId)
     updateUserPnL(takerAccount, event.params.takerAssetId, event.params.takerAmountFilled, price, takerIsSelling, market)
+  } else if (event.params.makerAssetId.gt(ZERO_BI)) {
+    // Taker is trading USDC for outcome tokens (buying outcome tokens)
+    updateUserPnL(takerAccount, event.params.makerAssetId, event.params.makerAmountFilled, price, false, market)
   }
   takerAccount.save()
   
