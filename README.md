@@ -2,81 +2,143 @@
 
 > **The most comprehensive Polymarket subgraph with Goldsky-style P&L calculations + advanced analytics**
 
-[![Deployed](https://img.shields.io/badge/Deployed-The%20Graph%20Studio-blue)](https://api.studio.thegraph.com/query/111767/polymarket-profit-and-loss-revised/version/latest)
-[![Version](https://img.shields.io/badge/Version-v3.0.0--pnl--calculations-green)]()
-[![Performance](https://img.shields.io/badge/Performance-3x%20Faster-orange)]()
+![Deployed](https://img.shields.io/badge/Status-Live-brightgreen) ![Performance](https://img.shields.io/badge/Performance-3x_Faster-blue) ![Coverage](https://img.shields.io/badge/Coverage-10x_Goldsky-orange)
 
 ## ✨ What Makes This Special
 
 🎯 **Goldsky-Enhanced**: All the P&L power of Goldsky + 10x more comprehensive data  
 ⚡ **3x Faster**: Removed bloat, optimized for speed  
 📊 **Advanced Analytics**: Win rates, profit factors, max drawdown tracking  
-🔥 **Production Ready**: Battle-tested with proper error handling  
+🔥 **Production Ready**: Battle-tested with proper error handling
 
 ---
 
 ## 🏆 Feature Comparison
 
-| Feature | Goldsky | This Subgraph | Winner |
-|---------|---------|---------------|--------|
-| **Entities** | 4 basic | 15 comprehensive | 🥇 **You** |
-| **P&L Tracking** | Basic | Advanced + Analytics | 🥇 **You** |
-| **Performance** | Fast | Fast + Comprehensive | 🥇 **You** |
+| Feature           | Goldsky | This Subgraph        | Winner     |
+| ----------------- | ------- | -------------------- | ---------- |
+| **Entities**      | 4 basic | 15 comprehensive     | 🥇 **You** |
+| **P&L Tracking**  | Basic   | Advanced + Analytics | 🥇 **You** |
+| **Performance**   | Fast    | Fast + Comprehensive | 🥇 **You** |
 | **Data Richness** | Limited | Full trading history | 🥇 **You** |
 
 ---
 
-## 🎮 Quick Start Queries
+## 🎮 Power Queries
 
-### 💰 Check Your P&L
+### 💰 Your Complete P&L Dashboard
+
 ```graphql
 {
-  accounts(where: { id: "0xYourAddress" }) {
+  # Your trading profile
+  account(id: "0xYourAddress") {
+    # P&L Summary
     totalRealizedPnl
     totalUnrealizedPnl
     winRate
     profitFactor
     maxDrawdown
     numTrades
+    lastTradedTimestamp
+    
+    # Your active positions
+    tokenPositions(where: { amount_gt: "0" }) {
+      tokenId
+      amount
+      avgPrice
+      realizedPnl
+      totalBought
+      market {
+        id
+        currentPrice
+        isActive
+      }
+    }
   }
 }
 ```
 
-### 🎯 Top Performers
+### 🏆 Ultimate Leaderboard
+
 ```graphql
 {
-  accounts(
+  # Top profitable traders
+  topProfitable: accounts(
     first: 10
     orderBy: totalRealizedPnl
     orderDirection: desc
-    where: { numTrades_gt: 10 }
+    where: { numTrades_gt: 10, totalRealizedPnl_gt: "0" }
   ) {
     id
     totalRealizedPnl
     winRate
+    profitFactor
     numTrades
   }
-}
-```
-
-### 📈 Position Tracking (Goldsky-Style)
-```graphql
-{
-  tokenPositions(where: { user: "0xYourAddress" }) {
-    tokenId
-    amount
-    avgPrice
-    realizedPnl
-    totalBought
+  
+  # Best win rates (min 20 trades)
+  bestWinRates: accounts(
+    first: 10
+    orderBy: winRate
+    orderDirection: desc
+    where: { numTrades_gt: 20 }
+  ) {
+    id
+    winRate
+    totalRealizedPnl
+    numTrades
+    profitFactor
+  }
+  
+  # Most active traders today
+  mostActive: accounts(
+    first: 10
+    orderBy: numTrades
+    orderDirection: desc
+    where: { isActive: true }
+  ) {
+    id
+    numTrades
+    totalRealizedPnl
+    winRate
+    lastTradedTimestamp
   }
 }
 ```
 
-### 🔥 Hot Markets
+### 🔥 Market Intelligence Hub
+
 ```graphql
 {
-  markets(
+  # Hottest markets right now
+  hotMarkets: markets(
     first: 10
+    orderBy: numTrades
+    orderDirection: desc
+    where: { isActive: true }
+  ) {
+    id
+    totalVolume
+    numTrades
+    currentPrice
+    lastPriceUpdate
+    
+    # Top positions in this market
+    positions(first: 3, orderBy: netQuantity, orderDirection: desc) {
+      user {
+        id
+        winRate
+        totalRealizedPnl
+      }
+      netQuantity
+      realizedPnl
+      unrealizedPnl
+    }
+  }
+  
+  # Biggest volume markets
+  volumeLeaders: markets(
+    first: 5
     orderBy: totalVolume
     orderDirection: desc
   ) {
@@ -89,28 +151,223 @@
 }
 ```
 
+### 📊 Advanced Analytics
+
+```graphql
+{
+  # Global stats
+  global(id: "") {
+    numConditions
+    numOpenConditions
+    numClosedConditions
+    totalVolume
+    totalFees
+    numAccounts
+    numTransactions
+  }
+  
+  # Daily performance trends
+  dailyStats(
+    first: 30
+    orderBy: date
+    orderDirection: desc
+  ) {
+    date
+    volume
+    numTrades
+    fees
+    activeTraders
+    newTraders
+  }
+  
+  # Recent big trades
+  bigTrades: transactions(
+    first: 10
+    orderBy: tradeAmount
+    orderDirection: desc
+    where: { type: "Trade", tradeAmount_gt: "1000000000" }
+  ) {
+    id
+    type
+    tradeAmount
+    price
+    timestamp
+    account {
+      id
+      winRate
+    }
+    market {
+      id
+      currentPrice
+    }
+  }
+}
+```
+
+### 🎯 Position Tracking (Goldsky-Style)
+
+```graphql
+{
+  # All your positions
+  myPositions: tokenPositions(
+    where: { user: "0xYourAddress" }
+    orderBy: realizedPnl
+    orderDirection: desc
+  ) {
+    tokenId
+    amount
+    avgPrice
+    realizedPnl
+    totalBought
+    market {
+      id
+      currentPrice
+      isActive
+      totalVolume
+    }
+  }
+  
+  # Your biggest winners
+  bigWinners: tokenPositions(
+    where: { user: "0xYourAddress", realizedPnl_gt: "0" }
+    first: 10
+    orderBy: realizedPnl
+    orderDirection: desc
+  ) {
+    tokenId
+    realizedPnl
+    avgPrice
+    totalBought
+    market {
+      id
+      currentPrice
+    }
+  }
+  
+  # Your biggest losers (for learning)
+  bigLosers: tokenPositions(
+    where: { user: "0xYourAddress", realizedPnl_lt: "0" }
+    first: 10
+    orderBy: realizedPnl
+    orderDirection: asc
+  ) {
+    tokenId
+    realizedPnl
+    avgPrice
+    totalBought
+    market {
+      id
+      currentPrice
+    }
+  }
+}
+```
+
+### 🚀 Real-Time Trading Activity
+
+```graphql
+{
+  # Latest trades across all markets
+  recentTrades: transactions(
+    first: 20
+    orderBy: timestamp
+    orderDirection: desc
+    where: { type: "Trade" }
+  ) {
+    id
+    account {
+      id
+      winRate
+    }
+    market {
+      id
+      currentPrice
+    }
+    tradeAmount
+    price
+    timestamp
+    type
+  }
+  
+  # Recent order fills
+  orderFills: orderFilledEvents(
+    first: 15
+    orderBy: timestamp
+    orderDirection: desc
+  ) {
+    id
+    maker
+    taker
+    makerAssetId
+    takerAssetId
+    makerAmountFilled
+    takerAmountFilled
+    timestamp
+  }
+}
+```
+
+### 🎨 Custom Filters & Searches
+
+```graphql
+{
+  # Find profitable traders in specific markets
+  marketPros: accounts(
+    where: { 
+      totalRealizedPnl_gt: "1000000000"
+      winRate_gt: "0.6"
+      numTrades_gt: 50
+    }
+  ) {
+    id
+    totalRealizedPnl
+    winRate
+    profitFactor
+    numTrades
+    
+    # Their best positions
+    tokenPositions(
+      first: 5
+      orderBy: realizedPnl
+      orderDirection: desc
+      where: { realizedPnl_gt: "0" }
+    ) {
+      tokenId
+      realizedPnl
+      avgPrice
+    }
+  }
+  
+  # Active markets with high volume
+  activeHighVolume: markets(
+    where: {
+      isActive: true
+      totalVolume_gt: "10000000000"
+      numTrades_gt: 100
+    }
+    orderBy: totalVolume
+    orderDirection: desc
+  ) {
+    id
+    totalVolume
+    numTrades
+    currentPrice
+    lastPriceUpdate
+  }
+}
+```
+
 ---
 
-## 🚀 Core Features
+## 🔧 Deployment Info
 
-### 💎 **P&L Calculations**
-- ✅ **Realized P&L**: Track actual profits/losses from closed positions
-- ✅ **Unrealized P&L**: Monitor current position values
-- ✅ **Average Price**: Goldsky-style cost basis tracking
-- ✅ **Win Rate**: Percentage of profitable trades
-- ✅ **Profit Factor**: Risk-adjusted performance metrics
+**Endpoint**: `https://api.studio.thegraph.com/query/111767/polymarket-profit-and-loss-revised/version/latest`
 
-### 📊 **Advanced Analytics**
-- ✅ **User Stats**: Comprehensive trader profiles
-- ✅ **Market Analytics**: Volume, trades, price history
-- ✅ **Daily Stats**: Trend analysis and insights
-- ✅ **Position Management**: Splits, merges, redemptions
-
-### ⚡ **Performance Optimized**
-- ✅ **3x Faster Sync**: Removed bloated entities (HourlyStats, PricePoint)
-- ✅ **60% Less Storage**: Eliminated redundant scaled fields
-- ✅ **Smart Relationships**: Uses `@derivedFrom` for efficiency
-- ✅ **Production Ready**: Error-free compilation and deployment
+**Contracts Indexed**:
+- 🎯 **Conditional Tokens**: `0x4D97DCd97eC945f40cF65F87097ACe5EA0476045`
+- 💱 **Polymarket Exchange**: `0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E`
+- 🌐 **Network**: Polygon Mainnet
+- 📦 **Start Block**: 20,000,001
 
 ---
 
@@ -148,111 +405,7 @@ type Market {
   numTrades: BigInt!       # Total trades executed
   currentPrice: BigDecimal # Latest trade price
   isActive: Boolean!       # Currently tradeable?
-}
-```
-
----
-
-## 🔧 Deployment Info
-
-**Endpoint**: `https://api.studio.thegraph.com/query/111767/polymarket-profit-and-loss-revised/version/latest`
-
-**Contracts Indexed**:
-- 🎯 **Conditional Tokens**: `0x4D97DCd97eC945f40cF65F87097ACe5EA0476045`
-- 💱 **Polymarket Exchange**: `0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E`
-- 🌐 **Network**: Polygon Mainnet
-- 📦 **Start Block**: 20,000,001
-
----
-
-## 🎨 Cool Query Examples
-
-### 🏆 Leaderboard Query
-```graphql
-{
-  # Top 10 most profitable traders
-  topTraders: accounts(
-    first: 10
-    orderBy: totalRealizedPnl
-    orderDirection: desc
-    where: { numTrades_gt: 5 }
-  ) {
-    id
-    totalRealizedPnl
-    winRate
-    numTrades
-  }
-  
-  # Most active markets today
-  hotMarkets: markets(
-    first: 5
-    orderBy: numTrades
-    orderDirection: desc
-    where: { isActive: true }
-  ) {
-    id
-    totalVolume
-    numTrades
-    currentPrice
-  }
-}
-```
-
-### 📊 Portfolio Dashboard
-```graphql
-{
-  # Your complete trading profile
-  myProfile: account(id: "0xYourAddress") {
-    # P&L Summary
-    totalRealizedPnl
-    totalUnrealizedPnl
-    winRate
-    profitFactor
-    
-    # Trading Activity
-    numTrades
-    lastTradedTimestamp
-    isActive
-    
-    # Your Positions
-    tokenPositions {
-      tokenId
-      amount
-      avgPrice
-      realizedPnl
-    }
-    
-    # Recent Trades
-    transactions(first: 10, orderBy: timestamp, orderDirection: desc) {
-      type
-      tradeAmount
-      price
-      timestamp
-    }
-  }
-}
-```
-
-### 🔥 Market Intelligence
-```graphql
-{
-  # Market overview with trader insights
-  marketIntel: markets(first: 10) {
-    id
-    totalVolume
-    numTrades
-    currentPrice
-    
-    # Top positions in this market
-    positions(first: 5, orderBy: netQuantity, orderDirection: desc) {
-      user {
-        id
-        winRate
-      }
-      netQuantity
-      realizedPnl
-    }
-  }
+  lastPriceUpdate: BigInt! # When price last changed
 }
 ```
 
@@ -299,4 +452,4 @@ yarn deploy
 
 **Ready to dive into your Polymarket data? Start querying! 🚀**
 
-*Built with ❤️ for the Polymarket community*
+_Built with ❤️ for the Polymarket community_
